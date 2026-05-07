@@ -1,48 +1,60 @@
 # Preferences Specification
 
-This specification defines a schema contract and a hierarchical value
-resolution model.
+This spec describes how to define preferences and how to resolve their
+final values when several layers can contribute.
 
-The most important concept is the split between:
+A preferences system has two halves:
 
-- **Predefined hierarchy**: the ordered list of scopes used for
-merge precedence (example: `system -> global -> application -> user`).
-- **Schema-defined behavior**: each `Property` declares `scope` and
-`overridable`.
+- **The Schema** — what preferences exist. Each `Property` declares
+  its key, default, owning `scope`, and whether it is `overridable`.
+  The `Schema` is built by composing `Fragments` contributed by
+  different parts of the system.
+- **Values, per scope** — what is actually set. Each `Scope` (for
+  example `system`, `global`, `application`, `user`) can hold its own
+  assignments. Scopes are ordered from most general to most specific.
 
-Read this as:
+The final `Preferences` are produced by merging the per-scope values
+in scope order, while respecting each property's rules (default,
+owning scope, `overridable`).
 
-- Scope order that is predefined.
-- Property behavior comes from the schema.
-- Final preferences come from merging values by scope order, while  
-respecting each property's `overridable` rule.
+This document is schema-focused. Transport, storage, mutation
+protocols, and authorization policy are out of scope — though
+authorization typically maps to scopes, with more general scopes
+requiring more permissions to write.
 
-Schema construction and values:
-
-- A `Schema` is the composition of multiple `Fragments`.
-- `Values` are per-scope assignments to `Property` keys.
-- A scope can be schema-defining, value-only, or both (for example,
-`user` is commonly value-only).
-- Authorization maps to scopes and controls who can write values at
-each layer. The higher the scope, the more permissions are needed to
-write values.
-
-This document is schema-focused and does not define transport,
-storage, mutation protocols, or authorization policy.
-
-Reference model:
-[https://code.visualstudio.com/api/references/contribution-points#Configuration-schema](https://code.visualstudio.com/api/references/contribution-points#Configuration-schema)
+Reference model: [VS Code Configuration
+schema](https://code.visualstudio.com/api/references/contribution-points#Configuration-schema)
 
 ## Core Terminology
 
 - **Property**: one schema entry for a single preference key.
 - **Fragment**: one partial schema contribution. A collection of
-`Properties`.
+  `Properties`.
 - **Schema**: the full property contract produced by composing all
-`Fragments`.
+  `Fragments`.
 - **Scope**: one layer in the host-defined merge hierarchy.
 - **Values**: per-scope assignments to `Property` keys.
 - **Preferences**: final effective values after hierarchical merge.
+
+```mermaid
+flowchart TB
+
+    P["Property<br/><i>one preference key</i>"]
+    F["Fragment<br/><i>group of Properties</i>"]
+    S["Schema<br/><i>composed Fragments</i>"]
+
+    Sc["Scope<br/><i>hierarchy layer</i>"]
+    V["Values<br/><i>per-scope assignments</i>"]
+
+    Pr["Preferences<br/><i>merged result</i>"]
+
+    P -->|grouped into| F
+    F -->|composed into| S
+    Sc -->|holds| V
+    S -->|validates| V
+    V -->|merged by Scope order| Pr
+    S -.->|defines contract for| Pr
+```
 
 In short: properties are combined into fragments; fragments compose
 the schema; values are authored per scope; preferences are the merged
@@ -53,16 +65,17 @@ result.
 To compute `Preferences`, the resolver needs:
 
 - An ordered list of `scopes` (merge precedence).
-- The full `schema` (including each `Property`, which must defined 
-`scope`, and `overridable`).
+- The full `Schema` (including each `Property`, which must define
+  `scope` and `overridable`).
 - A `values` object keyed by `scope`, where each value is a key-value
-map of property assignments for that layer.
+  map of property assignments for that layer.
 
 From these inputs, the resolver merges by `scope` order, applies
 `overridable`, falls back to defaults, validates against the `Schema`,
 and produces final `Preferences`.
 
-Example:
+Example (simplified types — only the fields the resolver consumes;
+the full `Property` contract is defined later):
 
 ```ts
 type Property = {
@@ -89,7 +102,7 @@ function resolvePreferences(scopes: string[], schema: Schema, values: Values) {
 
   const entries = Object.entries(schema.properties).map(
     ([key, property]) => {
-      
+
       const propertyScopeIndex = scopes.indexOf(property.scope);
       if (propertyScopeIndex === -1) {
         return {
@@ -99,8 +112,7 @@ function resolvePreferences(scopes: string[], schema: Schema, values: Values) {
         };
       }
 
-      const startValue =
-        values[property.scope]?.[key] ?? property.default;
+      const startValue = values[property.scope]?.[key] ?? property.default;
 
       const resolvedValue = property.overridable
         ? scopes.slice(propertyScopeIndex + 1).reduce((current, scope) => {
@@ -129,19 +141,6 @@ function resolvePreferences(scopes: string[], schema: Schema, values: Values) {
 }
 ```
 
-## Platform Model
-
-The runtime model separates schema contribution from value resolution:
-
-- **Contributors publish `Fragments`**: each fragment contributes
-`Properties` and may contribute localization keys.
-- **The host composes a `Schema`**: all active fragments are merged
-deterministically.
-- `**Values` are authored per host-defined `Scope**`: scope order
-controls merge precedence.
-- `**Preferences` are resolved output**: effective values after
-applying override rules, defaults, and validation.
-
 ## Canonical Fragment Shape
 
 Each contributor publishes one `Fragment` with this canonical
@@ -151,7 +150,6 @@ structure:
 {
   "contributes": {
     "configuration": {
-      "title": "ar.title",
       "contributor": "ar-app",
       "properties": {
         "ar.alignment": {
@@ -159,29 +157,30 @@ structure:
           "scope": "system",
           "overridable": true,
           "enum": ["left", "center", "right"],
-          "enumDescriptions": [
-            "ar.alignment.left",
-            "ar.alignment.center",
-            "ar.alignment.right"
+          "enumLabels": [
+            "%ar.alignment.left%",
+            "%ar.alignment.center%",
+            "%ar.alignment.right%"
           ],
           "default": "left",
-          "description": "ar.alignment.description"
+          "description": "%ar.alignment.description%"
         }
       }
     },
     "localization": {
       "defaultLocale": "en",
-      "supportedLocales": ["en", "es"],
       "messages": {
         "en": {
-          "ar.title": "AR",
+          "ar": "AR",
+          "ar.alignment": "Alignment",
           "ar.alignment.description": "Text alignment",
           "ar.alignment.left": "Left",
           "ar.alignment.center": "Center",
           "ar.alignment.right": "Right"
         },
         "es": {
-          "ar.title": "AR",
+          "ar": "AR",
+          "ar.alignment": "Alineacion",
           "ar.alignment.description": "Alineacion del texto",
           "ar.alignment.left": "Izquierda",
           "ar.alignment.center": "Centro",
@@ -195,80 +194,145 @@ structure:
 
 ### Root Fields
 
-- `contributes.configuration.title` (required): localization key for
-the fragment title.
 - `contributes.configuration.properties` (required): dictionary of
-`Property` entries.
+  `Property` entries.
 - `contributes.configuration.version` (optional): fragment schema
-version.
+  version.
 - `contributes.configuration.contributor` (optional): stable
-contributor identifier.
+  contributor identifier.
 - `contributes.localization` (optional): localization catalog for
-resolving keys to Markdown text.
+  resolving keys to Markdown text.
 - `contributes.localization.defaultLocale` (required when
-`localization` exists): fallback locale.
-- `contributes.localization.supportedLocales` (required when
-`localization` exists): non-empty array containing supported locale
-codes.
+  `localization` exists): fallback locale. Must be present as a key in
+  `messages`.
 - `contributes.localization.messages` (required when `localization`
-exists): locale map of message-key to Markdown text.
+  exists): locale map of message-key to Markdown text. The set of
+  supported locales is the keys of this map.
+
 
 ## Property Contract
 
 Each `Property` in `configuration.properties` must define:
 
-- `type` (required): one of `boolean`, `number`, `string`, `array`, `unknown`
+- `type` (required): one of `boolean`, `integer`, `number`, `string`,
+  `array`, `object`, or `any`.
 - `items` (required when `type: "array"`): object with `type` equal to
-`boolean`, `number`, `string`, or `unknown`
-- `scope` (required)
-- `overridable` (required boolean)
-- `default` (required)
-- `description` (required string; may be either a localization key or
-literal Markdown text)
+  `boolean`, `integer`, `number`, `string`, `object`, or `any`. Nested
+  arrays are not supported; use `any` if items may themselves be
+  arrays.
+- `scope` (required): see `Scope and override semantics` below.
+- `overridable` (required boolean): see `Scope and override semantics`
+  below.
+- `default` (required): the fallback value when no scope authors a
+  value. Must satisfy `type`, `items`, declared constraints, and
+  `enum`. See `Property Checks`.
+- `description` (required, key-or-text): a `%key%` reference resolved
+  from localization, or literal Markdown text. See `Localization
+  Contract` for the resolution rules.
 
 Optional shared metadata:
 
-- `deprecationMessage` (optional string; may be either a localization
-key or literal Markdown text)
-- `order`
-- `tags`
-- `additionalProperties` (for object-like extensibility where
-supported)
+- `deprecationMessage` (optional, key-or-text): see `description`.
+- `order` (optional number): used to order siblings in the
+  hierarchical display. See `Hierarchical Display Expectations`.
 
 Scope and override semantics:
 
 - `scope` selects the baseline layer where resolution begins for that
-property.
-- Scope order is host-defined (example profile: `system -> global -> application -> user`).
-- `overridable: true` allows downstream layers to replace upstream
-values.
-- `overridable: false` locks the value at its own scope (or `default`
-if missing there).
+  property. Values authored at scopes earlier in the host's order than
+  the property's `scope` are ignored; the resolver emits a warning.
+- Scope order is host-defined (example profile: `system -> global ->
+  application -> user`).
+- `overridable: true` allows downstream scopes (those after `scope` in
+  the host's order) to replace the value.
+- `overridable: false` locks the value at its own `scope` (or
+  `default` if missing there). Values authored at downstream scopes
+  for non-overridable properties are ignored; the resolver emits a
+  warning.
 
 ## Localization Contract (Optional)
 
-Localization supports key lookup with literal-text fallback:
+Localization is optional. When provided, resolved text is interpreted
+as Markdown.
 
-- Schema text fields may store either localization keys or final display text.
-- Localization contribution is optional.
-- When provided, display text is resolved from
-`contributes.localization.messages`.
-- Resolved text is interpreted as Markdown.
+### Key Reference Syntax
 
-If provided, localization shape:
+Localization keys are referenced with `%key%` syntax. A string is
+treated as a key reference when, and only when, it matches the
+regular expression:
+
+```
+^%[A-Za-z][A-Za-z0-9._-]*%$
+```
+
+That is: a single `%` character, an identifier starting with a letter
+and using `A–Z`, `a–z`, `0–9`, `.`, `_`, or `-`, and a closing `%`.
+Strings that do not match (including `%%`, `%foo`, `foo%`, strings
+with whitespace, and anything containing additional characters
+outside the wrapping `%...%`) are literal Markdown text.
+
+Fields that accept this key-or-text form (collectively, **key-or-text
+fields**):
+
+- `description` (on every `Property`)
+- `deprecationMessage` (on every `Property`, when present)
+- each entry of `enumLabels` (when present)
+- each entry of `enumDescriptions` (when present)
+
+In addition, the hierarchical display resolves group-node and property
+labels by direct key lookup (the full node key, e.g. `editor.font` or
+`editor.font.size`). These are *not* key-or-text fields and do not use
+the `%...%` syntax — the lookup is implicit in the tree structure.
+See `Hierarchical Display Expectations`.
+
+### Resolution Algorithm
+
+The same locale-fallback algorithm is used for both key-or-text
+fields and tree labels. It takes a localization key `K` and a
+requested locale `L` and produces display text:
+
+1. If `localization` is absent, or `messages[L]` is absent, or
+   `messages[L][K]` is absent → continue.
+   Else render `messages[L][K]`.
+2. If `localization` is absent, or `messages[defaultLocale][K]` is
+   absent → continue.
+   Else render `messages[defaultLocale][K]`.
+3. Render a fallback label derived from the last period-delimited
+   segment of `K`:
+   - capitalize the first letter,
+   - split camelCase boundaries into spaces.
+
+   Example: `backgroundColor` → "Background color".
+
+   Emit a warning recording the missing key and locale.
+
+Entry points:
+
+- **Key-or-text field**: if the field value matches the `%K%` syntax
+  above, run the algorithm with the inner `K`. Otherwise, render the
+  field value as literal Markdown.
+- **Tree label** (group node or property): run the algorithm with the
+  node's full structural key as `K`.
+
+Missing keys emit warnings but never invalidate a fragment.
+
+### Localization Shape
 
 ```json
 {
   "defaultLocale": "en",
-  "supportedLocales": ["en", "es"],
   "messages": {
     "en": {
+      "ar": "AR",
+      "ar.alignment": "Alignment",
       "ar.alignment.description": "Text alignment",
       "ar.alignment.left": "Left",
       "ar.alignment.center": "Center",
       "ar.alignment.right": "Right"
     },
     "es": {
+      "ar": "AR",
+      "ar.alignment": "Alineacion",
       "ar.alignment.description": "Alineacion del texto",
       "ar.alignment.left": "Izquierda",
       "ar.alignment.center": "Centro",
@@ -278,51 +342,65 @@ If provided, localization shape:
 }
 ```
 
-Fallback policy:
-
-- If localization exists and a key is missing in the requested locale,
-resolution falls back to `defaultLocale`.
-- For fields that may contain key-or-text values (for example,
-`description` and `deprecationMessage`), resolve as follows:
-  1. If localization exists and the field value is found as a key in
-    the requested locale, use that message.
-  2. Else if localization exists and the field value is found as a key
-    in `defaultLocale`, use that message.
-  3. Else use the field value as literal Markdown text.
-- Missing localization keys may emit warnings but do not invalidate a
-fragment.
-
 ## Supported Types
 
 ### Scalar Types
 
 - `boolean`
-- `number`
+- `integer`: a finite JSON number with no fractional part.
+- `number`: a finite JSON number (integer or fractional).
 - `string`
 
 ### Array Types
 
 - `type: "array"` with `items.type: "boolean"`
+- `type: "array"` with `items.type: "integer"`
 - `type: "array"` with `items.type: "number"`
 - `type: "array"` with `items.type: "string"`
+- `type: "array"` with `items.type: "object"`
+- `type: "array"` with `items.type: "any"`
+
+### Object and Any
+
+- `object`: a JSON object (`{}`). The schema does not validate the
+  internal shape; consumers are responsible for interpreting it.
+- `any`: any JSON value (primitive, array, or object). Used as the
+  escape valve when no shape can be guaranteed — including arrays of
+  arrays, mixed-shape lists, or values whose form varies across
+  scopes.
+
+`object` and `any` carry no type-specific constraints (no `minimum`,
+`pattern`, `enum`, etc.).
 
 ### Enum-Compatible Properties
 
 Enum behavior is represented with:
 
-- `enum`: list of allowed values
-- `enumLabels`: optional UI labels aligned by index with `enum`
-- `enumDescriptions`: optional localization keys for each enum
-option
+- `enum`: list of allowed values.
+- `enumLabels` (optional): array aligned by index with `enum`. Each
+entry is a short display label for the option (key-or-text: resolved
+as a localization key first, falling back to literal Markdown text).
+When absent, the literal `enum` value is used as the label.
+- `enumDescriptions` (optional): array aligned by index with `enum`.
+Each entry is longer per-option help text (key-or-text). When
+absent, no help text is rendered for the option.
 
 Typical enum form: `type: "string"` with `enum`.
 
 ## Type-Specific Constraints
 
-### Number Properties
+### Integer and Number Properties
 
-- `minimum`
-- `maximum`
+Both `integer` and `number` properties accept the same numeric
+bounds:
+
+- `minimum` (inclusive lower bound): the value must be greater than
+  or equal to `minimum`.
+- `maximum` (inclusive upper bound): the value must be less than or
+  equal to `maximum`.
+
+For `integer` properties, `minimum` and `maximum` should themselves
+be whole numbers.
 
 ### String Properties
 
@@ -363,13 +441,13 @@ override policy allows it.
 
 ### Deterministic Merge Order
 
-Recommended stable strategies:
+The host MUST select a single stable merge strategy and apply it
+consistently. The chosen strategy MUST produce identical output for
+identical inputs. Common choices include:
 
 - Static registry order, or
 - Explicit numeric priority, then contributor id lexicographical
-order.
-
-The strategy must produce identical output for identical inputs.
+  order.
 
 ## Validation Contract
 
@@ -378,30 +456,52 @@ A `Fragment` is valid only when all checks pass.
 ### Structural Checks
 
 - `contributes.configuration` exists.
-- `title` is a non-empty string.
 - `properties` is a non-null dictionary.
 - If `contributes.localization` exists:
   - `defaultLocale` is a non-empty string.
-  - `supportedLocales` is a non-empty array containing
-  `defaultLocale`.
-  - `messages` is an object keyed by locale code.
+  - `messages` is a non-empty object keyed by locale code.
   - `messages[defaultLocale]` exists.
 
 ### Property Checks
 
 For every property:
 
-- `type` is supported.
-- If `type` is `array`, `items.type` is one of `boolean`, `number`, or
-`string`.
+- The property key contains at least two period-delimited segments
+  (e.g. `editor.color`). Single-segment keys (e.g. `color`) are
+  invalid.
+- `type` is one of `boolean`, `integer`, `number`, `string`, `array`,
+  `object`, or `any`.
+- If `type` is `array`, `items.type` is one of `boolean`, `integer`,
+  `number`, `string`, `object`, or `any`.
 - `scope` exists and is a non-empty string.
 - `overridable` exists and is a boolean.
-- `default` exists and matches `type`.
 - `description` exists and is a non-empty string.
 - If `deprecationMessage` exists, it is a non-empty string.
-- If `enum` exists, `default` must be a member of `enum`.
-- If `enumLabels` exists, its length equals `enum.length`.
-- If `enumDescriptions` exists, its length equals `enum.length`.
+- If `order` exists, it is a number.
+
+Default value checks:
+
+- `default` exists.
+- `default` matches `type`:
+  - `boolean`: `true` or `false`.
+  - `integer`: a finite JSON number with no fractional part.
+  - `number`: a finite JSON number.
+  - `string`: a JSON string.
+  - `array`: a JSON array; each element matches `items.type` (and,
+    for typed item types, the element-level type rules above).
+  - `object`: a JSON object (not an array).
+  - `any`: any JSON value.
+- If `enum` exists, `default` is a member of `enum`.
+- `default` satisfies all type-specific constraints declared on the
+  property (`minimum`, `maximum`, `minLength`, `maxLength`, `pattern`,
+  `format`, `minItems`, `maxItems`).
+
+Enum checks:
+
+- If `enumLabels` exists, its length equals `enum.length` and each
+  entry is a non-empty string.
+- If `enumDescriptions` exists, its length equals `enum.length` and
+  each entry is a non-empty string.
 
 ### Constraint Consistency
 
@@ -412,22 +512,30 @@ For every property:
 
 ### Localization Coverage
 
-- If localization exists, `title` should exist in the `defaultLocale`
-catalog.
-- If localization exists and `description` is intended as a key, it
-should exist in `defaultLocale`.
-- If localization exists and `deprecationMessage` is intended as a key
-(when present), it should exist in `defaultLocale`.
-- If localization exists, every key in `enumDescriptions` (when
-present) should exist in `defaultLocale`.
-- If localization exists, every locale in `supportedLocales` should
-exist in `messages`.
-- Missing keys do not invalidate a fragment; unresolved values for
-key-or-text fields render as their original field text.
+When `localization` exists, the following keys *should* exist in
+`messages[defaultLocale]`. Missing keys do not invalidate a fragment;
+they emit warnings and the resolver applies the literal-text or
+derived-label fallback per `Localization Contract` and `Hierarchical
+Display Expectations`.
+
+- For each key-or-text field (`description`, `deprecationMessage`,
+  every entry of `enumLabels`, every entry of `enumDescriptions`):
+  if the field value matches `%X%`, the key `X` should exist.
+- For each property key, a localization message at that exact key
+  should exist (used as the property's tree label).
+- For each group node (every period-delimited prefix of a property
+  key that is itself the prefix of at least one property), a
+  localization message at that exact key should exist (used as the
+  group node's tree label).
 
 ### Composed Schema Checks
 
 - Property keys are globally unique after merge.
+- No property key is also a group node — i.e. no property key is a
+  strict prefix (segment-aligned) of another property key. For
+  example, `editor.font.size` and `editor.font.color` are valid
+  together, but `editor.font` cannot also be a property when either
+  of those exists.
 - Conflicts are either rejected or resolved by explicit policy.
 - Composition remains deterministic for the same fragment set.
 
@@ -465,8 +573,11 @@ Example effective preferences:
 Rules:
 
 - Unknown keys may be rejected or ignored by host policy.
-- Known keys must satisfy the composed schema type and constraints.
-- Omitted keys fall back to each property `default`.
+- Known keys must satisfy the composed schema `type` and constraints.
+- Omitted keys fall back to each `Property`'s `default`.
+- A `null` value is treated identically to an absent key — the
+  resolver behaves as if the key were not authored at that `Scope`
+  and continues with the standard fallback.
 
 ## Worked Examples
 
@@ -478,7 +589,6 @@ Fragment `ar-app`:
 {
   "contributes": {
     "configuration": {
-      "title": "ar.title",
       "contributor": "ar-app",
       "properties": {
         "ar.alignment": {
@@ -486,41 +596,44 @@ Fragment `ar-app`:
           "scope": "system",
           "overridable": true,
           "enum": ["left", "center", "right"],
-          "enumDescriptions": [
-            "ar.alignment.left",
-            "ar.alignment.center",
-            "ar.alignment.right"
+          "enumLabels": [
+            "%ar.alignment.left%",
+            "%ar.alignment.center%",
+            "%ar.alignment.right%"
           ],
           "default": "left",
-          "description": "ar.alignment.description"
+          "description": "%ar.alignment.description%"
         },
         "ar.enableHints": {
           "type": "boolean",
           "scope": "user",
           "overridable": false,
           "default": false,
-          "description": "ar.enableHints.description"
+          "description": "%ar.enableHints.description%"
         }
       }
     },
     "localization": {
       "defaultLocale": "en",
-      "supportedLocales": ["en", "es"],
       "messages": {
         "en": {
-          "ar.title": "AR",
+          "ar": "AR",
+          "ar.alignment": "Alignment",
           "ar.alignment.description": "Alignment mode",
           "ar.alignment.left": "Left",
           "ar.alignment.center": "Center",
           "ar.alignment.right": "Right",
+          "ar.enableHints": "Enable hints",
           "ar.enableHints.description": "Enable helper hints"
         },
         "es": {
-          "ar.title": "AR",
+          "ar": "AR",
+          "ar.alignment": "Alineacion",
           "ar.alignment.description": "Modo de alineacion",
           "ar.alignment.left": "Izquierda",
           "ar.alignment.center": "Centro",
           "ar.alignment.right": "Derecha",
+          "ar.enableHints": "Activar ayudas",
           "ar.enableHints.description": "Habilitar ayudas"
         }
       }
@@ -535,7 +648,6 @@ Fragment `editor-app`:
 {
   "contributes": {
     "configuration": {
-      "title": "editor.title",
       "contributor": "editor-app",
       "properties": {
         "editor.fontSize": {
@@ -545,16 +657,16 @@ Fragment `editor-app`:
           "minimum": 10,
           "maximum": 32,
           "default": 14,
-          "description": "editor.fontSize.description"
+          "description": "%editor.fontSize.description%"
         }
       }
     },
     "localization": {
       "defaultLocale": "en",
-      "supportedLocales": ["en"],
       "messages": {
         "en": {
-          "editor.title": "Editor",
+          "editor": "Editor",
+          "editor.fontSize": "Font size",
           "editor.fontSize.description": "Editor font size in pixels"
         }
       }
@@ -568,9 +680,35 @@ Fragment `editor-app`:
 ```json
 {
   "properties": {
-    "ar.alignment": { "type": "string", "scope": "system", "overridable": true, "enum": ["left", "center", "right"], "enumDescriptions": ["ar.alignment.left", "ar.alignment.center", "ar.alignment.right"], "default": "left", "description": "ar.alignment.description" },
-    "ar.enableHints": { "type": "boolean", "scope": "user", "overridable": false, "default": false, "description": "ar.enableHints.description" },
-    "editor.fontSize": { "type": "number", "scope": "user", "overridable": false, "minimum": 10, "maximum": 32, "default": 14, "description": "editor.fontSize.description" }
+    "ar.alignment": {
+      "type": "string",
+      "scope": "system",
+      "overridable": true,
+      "enum": ["left", "center", "right"],
+      "enumLabels": [
+        "%ar.alignment.left%",
+        "%ar.alignment.center%",
+        "%ar.alignment.right%"
+      ],
+      "default": "left",
+      "description": "%ar.alignment.description%"
+    },
+    "ar.enableHints": {
+      "type": "boolean",
+      "scope": "user",
+      "overridable": false,
+      "default": false,
+      "description": "%ar.enableHints.description%"
+    },
+    "editor.fontSize": {
+      "type": "number",
+      "scope": "user",
+      "overridable": false,
+      "minimum": 10,
+      "maximum": 32,
+      "default": 14,
+      "description": "%editor.fontSize.description%"
+    }
   }
 }
 ```
@@ -596,22 +734,22 @@ bump.
 - New property types require explicit platform support and validator
 updates.
 
-## Hierarchical display expectations
+## Hierarchical Display Expectations
 
 The GUI groups and orders properties by their period-delimited key
-segments.
+segments. Structural rules on property keys (at least two segments,
+no overlap between properties and group nodes) are normative and
+enforced by the `Validation Contract` (see `Property Checks` and
+`Composed Schema Checks`).
 
-Key shape and node semantics:
+### Tree Structure
 
-- Property keys must contain at least two segments. Example: `editor.color`.
-- Single-segment keys like `color` are invalid.
-- Any prefix that appears before another segment is a **group node**.
-- Group nodes are derived from property keys and are not properties.
-- A node cannot be both a group and a property. Example:
-`editor.font.size` and `editor.font.color` are valid, but
-`editor.font` cannot also be a property.
+- Any prefix that appears before another segment of a property key
+  is a **group node**.
+- Group nodes are derived from property keys and are not themselves
+  properties.
 
-Tree construction example:
+Tree construction example.
 
 Input properties:
 
@@ -629,33 +767,32 @@ Rendered hierarchy:
     - `size`
     - `color`
 
-Localization requirements:
+### Label Resolution
 
-- Every group node must have a localization message.
-- Every property key must have a localization message.
-- Display labels are resolved from the localization map using the full node
-key (`editor.font`, `editor.font.size`, etc.).
-- If a localization message exists for that key, use it as the label.
-- If no localization message exists, build a fallback label from the relevant
-segment:
-  - take the last key segment,
-  - capitalize the first letter,
-  - split camelCase boundaries into spaces.
-  Example: `backgroundColor` becomes `Background color`.
-- Sorting by label uses the resolved localized name for the active locale.
-- Label comparisons are case-insensitive.
+Display labels for both group nodes and property keys are resolved by
+running the unified algorithm in `Localization Contract → Resolution
+Algorithm` with the node's full structural key (`editor`,
+`editor.font`, `editor.font.size`, etc.) as `K`. The `%...%` syntax
+does *not* apply here — the structural key is the lookup key.
 
-Ordering rules:
+Group nodes and property keys *should* have a localization message in
+`messages[defaultLocale]` (see `Localization Coverage`); when missing,
+the segment-derived fallback is used and a warning is emitted.
+
+Sorting by label uses the resolved localized name for the active
+locale; comparisons are case-insensitive.
+
+### Ordering Rules
 
 1. Every property may declare an `order` number.
 2. Group node order is the minimum `order` among descendant properties
-  that define `order`.
+   that define `order`.
 3. If a node has no order (property without `order`, or group with no
-  descendant order), treat its order as a very large value so it is
+   descendant order), treat its order as a very large value so it is
    sorted after all explicitly ordered nodes.
 4. Sort by effective order ascending.
-5. When effective order is the same, sort lexicographically by localized
-  label (case-insensitive).
+5. When effective order is the same, sort lexicographically by
+   localized label (case-insensitive).
 
 ## Non-Goals
 

@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.nimbox.com/preferences/v1/fragment.schema.json",
+    "title": "PreferenceFragment",
+    "description": "A single Fragment contributed to the preferences Schema. See docs/specification.md (Canonical Fragment Shape).",
+    "type": "object",
+    "required": ["contributes"],
+    "properties": {
+        "contributes": {
+            "type": "object",
+            "required": ["configuration"],
+            "properties": {
+                "configuration": {
+                    "type": "object",
+                    "required": ["properties"],
+                    "properties": {
+                        "version": {
+                            "description": "Optional fragment schema version.",
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "contributor": {
+                            "description": "Optional stable contributor identifier.",
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "properties": {
+                            "description": "Dictionary of Property entries. Keys must contain at least two period-delimited segments.",
+                            "type": "object",
+                            "propertyNames": {
+                                "pattern": "^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z][A-Za-z0-9_-]+)+$"
+                            },
+                            "additionalProperties": {
+                                "$ref": "property.schema.json"
+                            }
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "localization": {
+                    "$ref": "localization.schema.json"
+                }
+            },
+            "additionalProperties": true
+        }
+    },
+    "additionalProperties": true
+}

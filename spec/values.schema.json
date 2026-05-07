@@ -1,0 +1,14 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.nimbox.com/preferences/v1/values.schema.json",
+    "title": "PreferenceValues",
+    "description": "Per-scope value assignments. Outer keys are scope names; inner keys are property keys. See docs/specification.md (Values and Preferences). Per-property type and constraint checks are performed against the composed Schema, not by this file.",
+    "type": "object",
+    "additionalProperties": {
+        "type": "object",
+        "propertyNames": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z][A-Za-z0-9_-]+)+$"
+        },
+        "additionalProperties": true
+    }
+}

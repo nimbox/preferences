@@ -5,70 +5,104 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
+/**
+ * One Property entry in a preferences Fragment. See docs/specification.md (Property Contract).
+ */
 export type PreferenceProperty = {
-  type: "boolean" | "number" | "string" | "array" | "object";
-  scope: string;
-  overridable: boolean;
-  default: unknown;
-  description: string;
-  deprecationMessage?: string;
-  order?: number;
-  tags?: string[];
-  additionalProperties?: boolean;
-  items?: ItemSchema;
-  /**
-   * @minItems 1
-   */
-  enum?: [unknown, ...unknown[]];
-  enumLabels?: string[];
-  enumDescriptions?: string[];
-  minimum?: number;
-  maximum?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  patternErrorMessage?: string;
-  format?: string;
-  minItems?: number;
-  maxItems?: number;
-  [k: string]: unknown;
-} & (
-  | {
-      type?: "boolean" | "number" | "string" | "object";
-      default?:
-        | boolean
-        | number
-        | string
-        | {
-            [k: string]: unknown;
-          }
-        | unknown[]
-        | null;
-      [k: string]: unknown;
-    }
-  | {
-      type: "array";
-      items: ItemSchema;
-      default?: unknown[];
-      [k: string]: unknown;
-    }
-);
-export type ItemSchema = {
   [k: string]: unknown;
 } & {
-  type: "boolean" | "number" | "string" | "object";
   /**
+   * JSON value type of the property.
+   */
+  type: "boolean" | "integer" | "number" | "string" | "array" | "object" | "any";
+  /**
+   * Owning scope: layer where resolution begins for this property.
+   */
+  scope: string;
+  /**
+   * Whether scopes downstream of `scope` may replace the value.
+   */
+  overridable: boolean;
+  /**
+   * Fallback value when no scope authors a value. Must satisfy `type`, `items`, declared constraints, and `enum`.
+   */
+  default:
+    | boolean
+    | number
+    | string
+    | unknown[]
+    | {
+        [k: string]: unknown;
+      };
+  /**
+   * Markdown text or `%key%` localization reference.
+   */
+  description: string;
+  /**
+   * Optional deprecation notice (key-or-text).
+   */
+  deprecationMessage?: string;
+  /**
+   * Optional sibling-ordering hint for hierarchical display.
+   */
+  order?: number;
+  items?: PreferencePropertyItem;
+  /**
+   * Allowed values. Only valid for boolean, integer, number, or string properties.
+   *
    * @minItems 1
    */
   enum?: [unknown, ...unknown[]];
+  /**
+   * Per-option short labels (key-or-text), aligned by index with `enum`.
+   */
   enumLabels?: string[];
+  /**
+   * Per-option long help (key-or-text), aligned by index with `enum`.
+   */
   enumDescriptions?: string[];
+  /**
+   * Inclusive lower bound. Only valid for integer or number properties.
+   */
   minimum?: number;
+  /**
+   * Inclusive upper bound. Only valid for integer or number properties.
+   */
   maximum?: number;
+  /**
+   * Minimum string length. Only valid for string properties.
+   */
   minLength?: number;
+  /**
+   * Maximum string length. Only valid for string properties.
+   */
   maxLength?: number;
+  /**
+   * Regular expression a string value must match. Only valid for string properties.
+   */
   pattern?: string;
+  /**
+   * Diagnostic shown when `pattern` fails (key-or-text).
+   */
   patternErrorMessage?: string;
-  format?: string;
+  /**
+   * Known string format. Only valid for string properties.
+   */
+  format?: "date" | "time" | "email" | "uri" | "ipv4";
+  /**
+   * Minimum array length. Only valid for array properties.
+   */
+  minItems?: number;
+  /**
+   * Maximum array length. Only valid for array properties.
+   */
+  maxItems?: number;
   [k: string]: unknown;
 };
+
+/**
+ * Element shape. Required when `type` is `array`; forbidden otherwise.
+ */
+export interface PreferencePropertyItem {
+  type: "boolean" | "integer" | "number" | "string" | "object" | "any";
+}

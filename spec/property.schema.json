@@ -1,207 +1,193 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nimbox/preferences/property.schema.json",
-  "title": "Preference Property",
-  "type": "object",
-  "$defs": {
-    "itemSchema": {
-      "type": "object",
-      "required": ["type"],
-      "properties": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.nimbox.com/preferences/v1/property.schema.json",
+    "title": "PreferenceProperty",
+    "description": "One Property entry in a preferences Fragment. See docs/specification.md (Property Contract).",
+    "type": "object",
+    "required": ["type", "scope", "overridable", "default", "description"],
+    "properties": {
         "type": {
-          "type": "string",
-          "enum": ["boolean", "number", "string", "object"]
+            "description": "JSON value type of the property.",
+            "type": "string",
+            "enum": ["boolean", "integer", "number", "string", "array", "object", "any"]
         },
-        "enum": {
-          "type": "array",
-          "minItems": 1
+        "scope": {
+            "description": "Owning scope: layer where resolution begins for this property.",
+            "type": "string",
+            "minLength": 1
         },
-        "enumLabels": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "enumDescriptions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "minimum": {
-          "type": "number"
-        },
-        "maximum": {
-          "type": "number"
-        },
-        "minLength": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "maxLength": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "pattern": {
-          "type": "string"
-        },
-        "patternErrorMessage": {
-          "type": "string",
-          "minLength": 1
-        },
-        "format": {
-          "type": "string"
-        }
-      },
-      "allOf": [
-        {
-          "if": {
-            "required": ["enum"]
-          },
-          "then": {
-            "required": ["type"]
-          }
-        },
-        {
-          "if": {
-            "required": ["enumLabels"]
-          },
-          "then": {
-            "required": ["enum"]
-          }
-        },
-        {
-          "if": {
-            "required": ["enumDescriptions"]
-          },
-          "then": {
-            "required": ["enum"]
-          }
-        }
-      ],
-      "additionalProperties": true
-    }
-  },
-  "required": [
-    "type",
-    "scope",
-    "overridable",
-    "default",
-    "description"
-  ],
-  "properties": {
-    "type": {
-      "type": "string",
-      "enum": ["boolean", "number", "string", "array", "object"]
-    },
-    "scope": {
-      "type": "string",
-      "minLength": 1
-    },
-    "overridable": {
-      "type": "boolean"
-    },
-    "default": {},
-    "description": {
-      "type": "string",
-      "minLength": 1
-    },
-    "deprecationMessage": {
-      "type": "string",
-      "minLength": 1
-    },
-    "order": {
-      "type": "number"
-    },
-    "tags": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "additionalProperties": {
-      "type": "boolean"
-    },
-    "items": {
-      "$ref": "#/$defs/itemSchema"
-    },
-    "enum": {
-      "type": "array",
-      "minItems": 1
-    },
-    "enumLabels": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "enumDescriptions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "minimum": {
-      "type": "number"
-    },
-    "maximum": {
-      "type": "number"
-    },
-    "minLength": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "maxLength": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "pattern": {
-      "type": "string"
-    },
-    "patternErrorMessage": {
-      "type": "string",
-      "minLength": 1
-    },
-    "format": {
-      "type": "string"
-    },
-    "minItems": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "maxItems": {
-      "type": "integer",
-      "minimum": 0
-    }
-  },
-  "oneOf": [
-    {
-      "properties": {
-        "type": {
-          "enum": ["boolean", "number", "string", "object"]
+        "overridable": {
+            "description": "Whether scopes downstream of `scope` may replace the value.",
+            "type": "boolean"
         },
         "default": {
-          "type": ["boolean", "number", "string", "object", "array", "null"]
-        }
-      },
-      "not": {
-        "required": ["items"]
-      }
-    },
-    {
-      "properties": {
-        "type": {
-          "const": "array"
+            "description": "Fallback value when no scope authors a value. Must satisfy `type`, `items`, declared constraints, and `enum`.",
+            "type": ["boolean", "integer", "number", "string", "array", "object"]
+        },
+        "description": {
+            "description": "Markdown text or `%key%` localization reference.",
+            "type": "string",
+            "minLength": 1
+        },
+        "deprecationMessage": {
+            "description": "Optional deprecation notice (key-or-text).",
+            "type": "string",
+            "minLength": 1
+        },
+        "order": {
+            "description": "Optional sibling-ordering hint for hierarchical display.",
+            "type": "number"
         },
         "items": {
-          "$ref": "#/$defs/itemSchema"
+            "description": "Element shape. Required when `type` is `array`; forbidden otherwise.",
+            "$ref": "#/$defs/item"
         },
-        "default": {
-          "type": "array"
+        "enum": {
+            "description": "Allowed values. Only valid for boolean, integer, number, or string properties.",
+            "type": "array",
+            "minItems": 1
+        },
+        "enumLabels": {
+            "description": "Per-option short labels (key-or-text), aligned by index with `enum`.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+        },
+        "enumDescriptions": {
+            "description": "Per-option long help (key-or-text), aligned by index with `enum`.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+        },
+        "minimum": {
+            "description": "Inclusive lower bound. Only valid for integer or number properties.",
+            "type": "number"
+        },
+        "maximum": {
+            "description": "Inclusive upper bound. Only valid for integer or number properties.",
+            "type": "number"
+        },
+        "minLength": {
+            "description": "Minimum string length. Only valid for string properties.",
+            "type": "integer",
+            "minimum": 0
+        },
+        "maxLength": {
+            "description": "Maximum string length. Only valid for string properties.",
+            "type": "integer",
+            "minimum": 0
+        },
+        "pattern": {
+            "description": "Regular expression a string value must match. Only valid for string properties.",
+            "type": "string",
+            "format": "regex"
+        },
+        "patternErrorMessage": {
+            "description": "Diagnostic shown when `pattern` fails (key-or-text).",
+            "type": "string",
+            "minLength": 1
+        },
+        "format": {
+            "description": "Known string format. Only valid for string properties.",
+            "type": "string",
+            "enum": ["date", "time", "email", "uri", "ipv4"]
+        },
+        "minItems": {
+            "description": "Minimum array length. Only valid for array properties.",
+            "type": "integer",
+            "minimum": 0
+        },
+        "maxItems": {
+            "description": "Maximum array length. Only valid for array properties.",
+            "type": "integer",
+            "minimum": 0
         }
-      },
-      "required": ["type", "items"]
+    },
+    "allOf": [
+        {
+            "if": {
+                "required": ["type"],
+                "properties": { "type": { "const": "array" } }
+            },
+            "then": { "required": ["items"] },
+            "else": { "not": { "required": ["items"] } }
+        },
+        {
+            "if": {
+                "anyOf": [
+                    { "required": ["enumLabels"] },
+                    { "required": ["enumDescriptions"] }
+                ]
+            },
+            "then": { "required": ["enum"] }
+        },
+        {
+            "if": { "required": ["enum"] },
+            "then": {
+                "required": ["type"],
+                "properties": {
+                    "type": { "enum": ["boolean", "integer", "number", "string"] }
+                }
+            }
+        },
+        {
+            "if": {
+                "anyOf": [
+                    { "required": ["minimum"] },
+                    { "required": ["maximum"] }
+                ]
+            },
+            "then": {
+                "required": ["type"],
+                "properties": {
+                    "type": { "enum": ["integer", "number"] }
+                }
+            }
+        },
+        {
+            "if": {
+                "anyOf": [
+                    { "required": ["minLength"] },
+                    { "required": ["maxLength"] },
+                    { "required": ["pattern"] },
+                    { "required": ["patternErrorMessage"] },
+                    { "required": ["format"] }
+                ]
+            },
+            "then": {
+                "required": ["type"],
+                "properties": {
+                    "type": { "const": "string" }
+                }
+            }
+        },
+        {
+            "if": {
+                "anyOf": [
+                    { "required": ["minItems"] },
+                    { "required": ["maxItems"] }
+                ]
+            },
+            "then": {
+                "required": ["type"],
+                "properties": {
+                    "type": { "const": "array" }
+                }
+            }
+        }
+    ],
+    "additionalProperties": true,
+    "$defs": {
+        "item": {
+            "title": "PreferencePropertyItem",
+            "description": "Element shape for `array` properties. Nested arrays are not supported; use `any` if elements may themselves be arrays.",
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": ["boolean", "integer", "number", "string", "object", "any"]
+                }
+            },
+            "additionalProperties": false
+        }
     }
-  ],
-  "additionalProperties": true
 }

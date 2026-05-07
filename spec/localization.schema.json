@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.nimbox.com/preferences/v1/localization.schema.json",
+    "title": "PreferenceLocalization",
+    "description": "Optional localization catalog for resolving `%key%` references and tree labels. See docs/specification.md (Localization Contract). The presence of `messages[defaultLocale]` is required by the contract but enforced at runtime.",
+    "type": "object",
+    "required": ["defaultLocale", "messages"],
+    "properties": {
+        "defaultLocale": {
+            "description": "Fallback locale code. Must be present as a key in `messages`.",
+            "type": "string",
+            "minLength": 1
+        },
+        "messages": {
+            "description": "Locale code to message-key map. Each value resolves to Markdown text.",
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+            }
+        }
+    },
+    "additionalProperties": false
+}
