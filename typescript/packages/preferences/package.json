@@ -19,7 +19,7 @@
     "dist"
   ],
   "scripts": {
-    "generate": "json2ts -i ../../../spec/property.schema.json -o ./src/generated/types.ts",
+    "generate": "json2ts -i ../../../spec/property.schema.json -o ./src/generated/property.ts --cwd ../../../spec && json2ts -i ../../../spec/messages.schema.json -o ./src/generated/messages.ts --cwd ../../../spec && json2ts -i ../../../spec/values.schema.json -o ./src/generated/values.ts --cwd ../../../spec",
     "build": "npm run generate && tsc -b --force ./tsconfig.json",
     "typecheck": "npm run generate && tsc -p ./tsconfig.json --noEmit"
   },

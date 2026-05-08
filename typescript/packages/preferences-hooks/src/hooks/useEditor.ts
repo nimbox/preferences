@@ -1,9 +1,17 @@
+import {
+    parseSafe,
+    ParseError,
+    resolveAtScope,
+    type PreferenceState,
+    type Property,
+    type PropertyKey,
+    type Schema,
+    type Scope,
+    type Values,
+    type Warning
+} from '@nimbox/preferences';
 import { useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { PreferenceProperty } from '../../../preferences/dist/generated/types';
-import type { PreferenceValue } from '../../../preferences/dist/types';
-import { parseSafe, ParseError } from '../../../preferences/dist/utils/parse';
-import { resolve } from '../../../preferences/dist/utils/resolve';
 import type { ChangeHandler, RefCallback, RegisterElement } from '../types';
 
 
@@ -19,21 +27,22 @@ export interface UseEditorDraftEntry {
     error: ParseErrorLike | null;
 }
 
-export type UseEditorDrafts = Record<string, Record<string, UseEditorDraftEntry>>;
+export type UseEditorDrafts = Record<Scope, Record<PropertyKey, UseEditorDraftEntry>>;
 
 export interface UseEditorProps {
 
-    scope: string;
-    scopes: string[];
+    schema: Schema;
 
-    properties: Record<string, PreferenceProperty>;
-    values: Record<string, Record<string, unknown>>;
+    scope: Scope;
+    scopes: ReadonlyArray<Scope>;
 
-    onChange: (scope: string, key: string, value: unknown) => Promise<void>;
+    values: Values;
+
+    onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
 
 }
 
-export interface UserEditorRegisterResult {
+export interface UseEditorRegisterResult {
 
     ref: RefCallback;
 
@@ -44,33 +53,37 @@ export interface UserEditorRegisterResult {
 
 }
 
-export interface UserEditorRegisterOptions {
+export interface UseEditorRegisterOptions {
     mode: 'change' | 'blur';
 }
 
 export interface UseEditorResult {
 
-    preferences: Record<string, PreferenceValue>;
+    state: Record<PropertyKey, PreferenceState>;
+    warnings: Warning[];
+
     drafts: UseEditorDrafts;
 
-    register: (key: string, options: UserEditorRegisterOptions) => UserEditorRegisterResult;
-    reset: (key: string) => void;
+    register: (key: PropertyKey, options: UseEditorRegisterOptions) => UseEditorRegisterResult;
+    reset: (key: PropertyKey) => void;
 
 }
 
+
 export function useEditor(props: UseEditorProps): UseEditorResult {
 
-    const { scopes, scope, properties, values, onChange } = props;
+    const { schema, scope, scopes, values, onChange } = props;
     const [drafts, setDrafts] = useState<UseEditorDrafts>({});
 
-    const preferences = useMemo(() => {
-        return resolve(scopes, scope, properties, values);
-    }, [scopes, scope, properties, values]);
+    const { state, warnings } = useMemo(() => {
+        return resolveAtScope(scope, scopes, schema, values);
+    }, [scope, scopes, schema, values]);
 
     return {
-        preferences,
+        state,
+        warnings,
         drafts,
-        register: (key: string, options: UserEditorRegisterOptions) => {
+        register: (key: PropertyKey, options: UseEditorRegisterOptions) => {
             return {
                 name: key,
                 ref: (instance) => {
@@ -80,9 +93,9 @@ export function useEditor(props: UseEditorProps): UseEditorResult {
                     }
 
                     const draftValue = drafts[scope]?.[key]?.value;
-                    const value = draftValue ?? preferences[key]?.value;
+                    const value = draftValue ?? state[key]?.value;
                     if (instance.type === 'checkbox') {
-                        instance.checked = toInputChecked(value);
+                        (instance as HTMLInputElement).checked = toInputChecked(value);
                         return;
                     }
 
@@ -97,7 +110,7 @@ export function useEditor(props: UseEditorProps): UseEditorResult {
                         event,
                         key,
                         scope,
-                        property: properties[key],
+                        property: schema[key],
                         onChange,
                         setDrafts
                     });
@@ -110,17 +123,15 @@ export function useEditor(props: UseEditorProps): UseEditorResult {
                         event,
                         key,
                         scope,
-                        property: properties[key],
+                        property: schema[key],
                         onChange,
                         setDrafts
                     });
-                },
+                }
             };
         },
-        reset: (key: string) => {
-            setDrafts((currentDrafts) => {
-                return clearDraftEntry(currentDrafts, scope, key);
-            });
+        reset: (key: PropertyKey) => {
+            setDrafts((currentDrafts) => clearDraftEntry(currentDrafts, scope, key));
         }
     };
 
@@ -157,13 +168,11 @@ function toInputValue(value: unknown): string {
 }
 
 async function commitOnEvent(params: {
-    event: {
-        target: RegisterElement;
-    };
-    key: string;
-    scope: string;
-    property: PreferenceProperty | undefined;
-    onChange: (scope: string, key: string, value: unknown) => Promise<void>;
+    event: { target: RegisterElement };
+    key: PropertyKey;
+    scope: Scope;
+    property: Property | undefined;
+    onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
     setDrafts: Dispatch<SetStateAction<UseEditorDrafts>>;
 }): Promise<void> {
 
@@ -176,27 +185,23 @@ async function commitOnEvent(params: {
         : event.target.value;
 
     if (property) {
-        const parseResult = parseSafe(property, rawInputValue);
-        if (!parseResult.success) {
-            setDrafts((currentDrafts) => {
-                return setDraftEntry(currentDrafts, scope, key, {
-                    value: rawDraftValue,
-                    error: parseResult.error
-                });
-            });
+        const result = parseSafe(property, rawInputValue);
+        if (!result.success) {
+            setDrafts((currentDrafts) => setDraftEntry(currentDrafts, scope, key, {
+                value: rawDraftValue,
+                error: result.error
+            }));
             return;
         }
 
         try {
-            await onChange(scope, key, parseResult.data);
+            await onChange(scope, key, result.data);
             setDrafts((currentDrafts) => clearDraftEntry(currentDrafts, scope, key));
         } catch (error) {
-            setDrafts((currentDrafts) => {
-                return setDraftEntry(currentDrafts, scope, key, {
-                    value: rawDraftValue,
-                    error: createCommitError(error)
-                });
-            });
+            setDrafts((currentDrafts) => setDraftEntry(currentDrafts, scope, key, {
+                value: rawDraftValue,
+                error: createCommitError(error)
+            }));
         }
         return;
     }
@@ -205,12 +210,10 @@ async function commitOnEvent(params: {
         await onChange(scope, key, rawInputValue);
         setDrafts((currentDrafts) => clearDraftEntry(currentDrafts, scope, key));
     } catch (error) {
-        setDrafts((currentDrafts) => {
-            return setDraftEntry(currentDrafts, scope, key, {
-                value: rawDraftValue,
-                error: createCommitError(error)
-            });
-        });
+        setDrafts((currentDrafts) => setDraftEntry(currentDrafts, scope, key, {
+            value: rawDraftValue,
+            error: createCommitError(error)
+        }));
     }
 
 }
@@ -224,6 +227,7 @@ function createCommitError(error: unknown): UseEditorCommitError {
     const message = error instanceof Error
         ? error.message
         : 'Failed to save preference';
+
     return {
         type: 'commit',
         message
@@ -233,8 +237,8 @@ function createCommitError(error: unknown): UseEditorCommitError {
 
 function setDraftEntry(
     currentDrafts: UseEditorDrafts,
-    scope: string,
-    key: string,
+    scope: Scope,
+    key: PropertyKey,
     entry: UseEditorDraftEntry
 ): UseEditorDrafts {
 
@@ -250,8 +254,8 @@ function setDraftEntry(
 
 function clearDraftEntry(
     currentDrafts: UseEditorDrafts,
-    scope: string,
-    key: string
+    scope: Scope,
+    key: PropertyKey
 ): UseEditorDrafts {
 
     const scopeDrafts = currentDrafts[scope];
@@ -259,15 +263,11 @@ function clearDraftEntry(
         return currentDrafts;
     }
 
-    const nextScopeDrafts = {
-        ...scopeDrafts
-    };
+    const nextScopeDrafts = { ...scopeDrafts };
     delete nextScopeDrafts[key];
 
     if (Object.keys(nextScopeDrafts).length === 0) {
-        const nextDrafts = {
-            ...currentDrafts
-        };
+        const nextDrafts = { ...currentDrafts };
         delete nextDrafts[scope];
         return nextDrafts;
     }
@@ -278,4 +278,3 @@ function clearDraftEntry(
     };
 
 }
-

@@ -1,4 +1,4 @@
-import type { PropertyNode } from '@nimbox/preferences';
+import type { PreferenceNode } from '@nimbox/preferences';
 import { Fragment } from 'react';
 import type { UseEditorResult } from '../../hooks/useEditor';
 import { EditorItem } from './EditorItem';
@@ -6,10 +6,10 @@ import { EditorItem } from './EditorItem';
 
 export interface EditorPaneProps {
     scope: string;
-    nodes: PropertyNode[];
+    nodes: PreferenceNode[];
     depth: number;
     register: UseEditorResult['register'];
-    preferences: UseEditorResult['preferences'];
+    state: UseEditorResult['state'];
     drafts: UseEditorResult['drafts'];
 }
 
@@ -26,17 +26,17 @@ function Heading(props: {
 }
 
 function EditorTree(props: {
-    nodes: PropertyNode[];
+    nodes: PreferenceNode[];
     level: number;
     scope: string;
     depth: number;
     breadcrumbs: string[];
     register: UseEditorResult['register'];
-    preferences: UseEditorResult['preferences'];
+    state: UseEditorResult['state'];
     drafts: UseEditorResult['drafts'];
 }) {
 
-    const { nodes, level, scope, depth, breadcrumbs, register, preferences, drafts } = props;
+    const { nodes, level, scope, depth, breadcrumbs, register, state, drafts } = props;
 
     return (
         <>
@@ -54,7 +54,7 @@ function EditorTree(props: {
                                     depth={depth}
                                     breadcrumbs={breadcrumbs}
                                     register={register}
-                                    preferences={preferences}
+                                    state={state}
                                     drafts={drafts}
                                 />
                             </Fragment>
@@ -69,7 +69,7 @@ function EditorTree(props: {
                             depth={depth}
                             breadcrumbs={[...breadcrumbs, node.title]}
                             register={register}
-                            preferences={preferences}
+                            state={state}
                             drafts={drafts}
                         />
                     );
@@ -81,7 +81,7 @@ function EditorTree(props: {
                         item={node}
                         breadcrumbs={breadcrumbs}
                         register={register}
-                        preference={preferences[node.key]}
+                        preference={state[node.key]}
                         draft={drafts[scope]?.[node.key]}
                     />
                 );
@@ -93,7 +93,7 @@ function EditorTree(props: {
 
 export function EditorPane(props: EditorPaneProps) {
 
-    const { nodes, scope, depth, register, preferences, drafts } = props;
+    const { nodes, scope, depth, register, state, drafts } = props;
 
     return (
         <div>
@@ -104,7 +104,7 @@ export function EditorPane(props: EditorPaneProps) {
                 depth={depth}
                 breadcrumbs={[]}
                 register={register}
-                preferences={preferences}
+                state={state}
                 drafts={drafts}
             />
         </div>

@@ -1,15 +1,15 @@
-import type { PropertyGroup, PropertyNode } from '@nimbox/preferences';
+import type { PreferenceGroup, PreferenceNode } from '@nimbox/preferences';
 import { useMemo } from 'react';
 
 
 export interface GroupPaneProps {
-    nodes: PropertyNode[];
+    nodes: PreferenceNode[];
     depth: number;
 }
 
-function filterTree(nodes: PropertyNode[], depth: number, level = 0): PropertyGroup[] {
+function filterTree(nodes: PreferenceNode[], depth: number, level = 0): PreferenceGroup[] {
 
-    const result: PropertyGroup[] = [];
+    const result: PreferenceGroup[] = [];
 
     for (const node of nodes) {
         if (node.kind !== 'group') continue;
@@ -24,7 +24,7 @@ function filterTree(nodes: PropertyNode[], depth: number, level = 0): PropertyGr
 
 }
 
-function GroupRow(props: { group: PropertyGroup; level: number }) {
+function GroupRow(props: { group: PreferenceGroup; level: number }) {
 
     const { group, level } = props;
 

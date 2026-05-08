@@ -1,43 +1,41 @@
-import { stratify, type ParsePropertyValue, type PropertyNode } from '@nimbox/preferences';
-import type { PreferenceProperty } from '../../../preferences/dist/generated/types';
+import {
+    stratify,
+    type Messages,
+    type PreferenceTree,
+    type Schema,
+    type Scope,
+    type Warning
+} from '@nimbox/preferences';
 import { useMemo } from 'react';
 
 
 export interface UsePreferencesProps {
 
-    scopes: string[];
-    scope: string;
+    schema: Schema;
 
-    properties: Record<string, PreferenceProperty>;
-    propertyPredicate?: (key: string, property: PreferenceProperty) => boolean;
+    scopes: ReadonlyArray<Scope>;
+    scope?: Scope;
 
-    parse?: ParsePropertyValue;
-    onChange?: (scope: string, key: string, value: unknown) => void;
-
-    messages?: Record<string, string>;
+    messages?: Messages;
 
     debug?: boolean;
 
-};
+}
 
 export interface UsePreferencesResult {
 
-    nodes: PropertyNode[];
+    tree: PreferenceTree;
+    warnings: Warning[];
 
 }
 
+
 export function usePreferences(props: UsePreferencesProps): UsePreferencesResult {
 
-    const {
-        scopes, scope, properties, messages = {}, debug = false
-    } = props;
+    const { schema, scopes, scope, messages, debug = false } = props;
 
-    const nodes = useMemo(() => {
-        return stratify(scopes, scope, properties, messages, { debug });
-    }, [scopes, scope, properties, messages, debug]);
-
-    return {
-        nodes
-    };
+    return useMemo(() => {
+        return stratify(schema, messages, { scope, scopes, debug });
+    }, [schema, messages, scope, scopes, debug]);
 
 }

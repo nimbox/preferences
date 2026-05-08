@@ -2,9 +2,9 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://schemas.nimbox.com/preferences/v1/property.schema.json",
     "title": "PreferenceProperty",
-    "description": "One Property entry in a preferences Fragment. See docs/specification.md (Property Contract).",
+    "description": "One Property entry in a preferences Schema. See docs/specification.md (Property Contract).",
     "type": "object",
-    "required": ["type", "scope", "overridable", "default", "description"],
+    "required": ["type", "scope", "overridable"],
     "properties": {
         "type": {
             "description": "JSON value type of the property.",
@@ -25,7 +25,7 @@
             "type": ["boolean", "integer", "number", "string", "array", "object"]
         },
         "description": {
-            "description": "Markdown text or `%key%` localization reference.",
+            "description": "Markdown text or `%key%` message reference.",
             "type": "string",
             "minLength": 1
         },
@@ -124,7 +124,7 @@
             "then": {
                 "required": ["type"],
                 "properties": {
-                    "type": { "enum": ["boolean", "integer", "number", "string"] }
+                    "type": { "enum": ["integer", "string"] }
                 }
             }
         },

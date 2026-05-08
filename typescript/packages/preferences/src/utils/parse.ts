@@ -1,247 +1,254 @@
-import type { PreferenceProperty } from '../generated/types';
+import type { Property, PropertyItem } from '../types.js';
+
 
 export interface ParseIssue {
-  readonly code?: string;
-  readonly input?: unknown;
-  readonly path: PropertyKey[];
-  readonly message: string;
+    readonly code?: string;
+    readonly input?: unknown;
+    readonly path: ReadonlyArray<PropertyKey>;
+    readonly message: string;
 }
+
 
 export class ParseError extends Error {
 
-  readonly issues: ParseIssue[];
+    readonly issues: ParseIssue[];
 
-  constructor(issues: ParseIssue[]) {
-    super(issues[0]?.message ?? 'Parse failed');
-    this.name = 'ParseError';
-    this.issues = issues;
-  }
+    constructor(issues: ParseIssue[]) {
+        super(issues[0]?.message ?? 'Parse failed');
+        this.name = 'ParseError';
+        this.issues = issues;
+    }
 
 }
 
-export type ParsePropertyValue = (property: PreferenceProperty, value: unknown) => unknown;
+
+export type ParsePropertyValue = (property: Property, value: unknown) => unknown;
 
 export type ParseSafeResult =
-  | { success: true; data: unknown }
-  | { success: false; error: ParseError };
+    | { success: true; data: unknown }
+    | { success: false; error: ParseError };
+
 
 export function isParseError(error: unknown): error is ParseError {
-  return error instanceof ParseError;
+    return error instanceof ParseError;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export const parse: ParsePropertyValue = (property, value) => {
 
-  const parseResult = parseSafe(property, value);
-  if (!parseResult.success) {
-    throw parseResult.error;
-  }
+    const result = parseSafe(property, value);
+    if (!result.success) {
+        throw result.error;
+    }
 
-  return parseResult.data;
+    return result.data;
 
 };
 
-export function parseSafe(property: PreferenceProperty, value: unknown): ParseSafeResult {
 
-  if (property.type === 'boolean') {
+export function parseSafe(property: Property, value: unknown): ParseSafeResult {
+
+    switch (property.type) {
+
+        case 'boolean':
+            return parseBoolean(value);
+
+        case 'integer':
+            return parseNumeric(property, value, true);
+
+        case 'number':
+            return parseNumeric(property, value, false);
+
+        case 'string':
+            return parseString(property, value);
+
+        case 'object':
+            return parseObject(value);
+
+        case 'array':
+            return parseArray(property, value);
+
+        case 'any':
+            return { success: true, data: value };
+
+        default:
+            return { success: true, data: value };
+
+    }
+
+}
+
+
+function parseBoolean(value: unknown): ParseSafeResult {
+
+    if (typeof value === 'boolean') {
+        return { success: true, data: value };
+    }
+    if (typeof value === 'string') {
+        if (value === 'true') return { success: true, data: true };
+        if (value === 'false') return { success: true, data: false };
+    }
     return { success: true, data: Boolean(value) };
-  }
 
-  if (property.type === 'number') {
+}
+
+
+function parseNumeric(property: Property, value: unknown, integer: boolean): ParseSafeResult {
 
     const text = String(value ?? '').trim();
     if (!text) {
-      return {
-        success: false,
-        error: new ParseError([
-          { code: 'number-required', input: value, path: [], message: 'validation.number.required' }
-        ])
-      };
+        return failure('number-required', value, integer ? 'validation.integer.required' : 'validation.number.required');
     }
 
     const parsed = Number(text);
     if (!Number.isFinite(parsed)) {
-      return {
-        success: false,
-        error: new ParseError([
-          { code: 'number-invalid', input: value, path: [], message: 'validation.number.invalid' }
-        ])
-      };
+        return failure('number-invalid', value, integer ? 'validation.integer.invalid' : 'validation.number.invalid');
+    }
+
+    if (integer && !Number.isInteger(parsed)) {
+        return failure('integer-invalid', value, 'validation.integer.invalid');
     }
 
     if (typeof property.minimum === 'number' && parsed < property.minimum) {
-      return {
-        success: false,
-        error: new ParseError([
-          {
-            code: 'number-minimum',
-            input: parsed,
-            path: [],
-            message: 'validation.number.minimum'
-          }
-        ])
-      };
+        return failure('number-minimum', parsed, 'validation.number.minimum');
     }
-
     if (typeof property.maximum === 'number' && parsed > property.maximum) {
-      return {
-        success: false,
-        error: new ParseError([
-          {
-            code: 'number-maximum',
-            input: parsed,
-            path: [],
-            message: 'validation.number.maximum'
-          }
-        ])
-      };
+        return failure('number-maximum', parsed, 'validation.number.maximum');
     }
 
     return { success: true, data: parsed };
 
-  }
+}
 
-  if (property.type === 'string') {
+
+function parseString(property: Property, value: unknown): ParseSafeResult {
 
     const parsed = String(value ?? '');
+
     if (typeof property.minLength === 'number' && parsed.length < property.minLength) {
-      return {
-        success: false,
-        error: new ParseError([
-          {
-            code: 'string-min-length',
-            input: parsed,
-            path: [],
-            message: 'validation.string.minLength'
-          }
-        ])
-      };
+        return failure('string-min-length', parsed, 'validation.string.minLength');
     }
-
     if (typeof property.maxLength === 'number' && parsed.length > property.maxLength) {
-      return {
-        success: false,
-        error: new ParseError([
-          {
-            code: 'string-max-length',
-            input: parsed,
-            path: [],
-            message: 'validation.string.maxLength'
-          }
-        ])
-      };
+        return failure('string-max-length', parsed, 'validation.string.maxLength');
     }
 
-    if (property.pattern) {
-      let regex: RegExp | null = null;
-      try {
-        regex = new RegExp(property.pattern);
-      } catch {
-        regex = null;
-      }
-      if (regex && !regex.test(parsed)) {
-        return {
-          success: false,
-          error: new ParseError([
-            {
-              code: 'string-pattern',
-              input: parsed,
-              path: [],
-              message: String(property.patternErrorMessage || 'validation.string.pattern')
-            }
-          ])
-        };
-      }
+    if (typeof property.pattern === 'string' && property.pattern.length > 0) {
+        let regex: RegExp | null = null;
+        try {
+            regex = new RegExp(property.pattern);
+        } catch {
+            regex = null;
+        }
+        if (regex && !regex.test(parsed)) {
+            return failure(
+                'string-pattern',
+                parsed,
+                String(property.patternErrorMessage || 'validation.string.pattern')
+            );
+        }
     }
 
     return { success: true, data: parsed };
 
-  }
+}
 
-  if (property.type === 'object') {
 
-    try {
+function parseObject(value: unknown): ParseSafeResult {
 
-      const parsed = JSON.parse(String(value ?? ''));
-      if (!isRecord(parsed)) {
-        return {
-          success: false,
-          error: new ParseError([
-            { code: 'object-invalid', input: parsed, path: [], message: 'validation.object.requiredObject' }
-          ])
-        };
-      }
-
-      return { success: true, data: parsed };
-
-    } catch {
-      return {
-        success: false,
-        error: new ParseError([
-          { code: 'object-json', input: value, path: [], message: 'validation.object.invalidJson' }
-        ])
-      };
+    if (isRecord(value)) {
+        return { success: true, data: value };
     }
 
-  }
-
-  if (property.type === 'array') {
-
     try {
-
-      const parsed = JSON.parse(String(value ?? ''));
-      if (!Array.isArray(parsed)) {
-        return {
-          success: false,
-          error: new ParseError([
-            { code: 'array-invalid', input: parsed, path: [], message: 'validation.array.requiredArray' }
-          ])
-        };
-      }
-
-      if (typeof property.minItems === 'number' && parsed.length < property.minItems) {
-        return {
-          success: false,
-          error: new ParseError([
-            {
-              code: 'array-min-items',
-              input: parsed,
-              path: [],
-              message: 'validation.array.minItems'
-            }
-          ])
-        };
-      }
-
-      if (typeof property.maxItems === 'number' && parsed.length > property.maxItems) {
-        return {
-          success: false,
-          error: new ParseError([
-            {
-              code: 'array-max-items',
-              input: parsed,
-              path: [],
-              message: 'validation.array.maxItems'
-            }
-          ])
-        };
-      }
-
-      return { success: true, data: parsed };
-
+        const parsed = JSON.parse(String(value ?? ''));
+        if (!isRecord(parsed)) {
+            return failure('object-invalid', parsed, 'validation.object.requiredObject');
+        }
+        return { success: true, data: parsed };
     } catch {
-      return {
-        success: false,
-        error: new ParseError([
-          { code: 'array-json', input: value, path: [], message: 'validation.array.invalidJson' }
-        ])
-      };
+        return failure('object-json', value, 'validation.object.invalidJson');
     }
-  }
 
-  return { success: true, data: value };
+}
 
+
+function parseArray(property: Property, value: unknown): ParseSafeResult {
+
+    let parsed: unknown;
+    if (Array.isArray(value)) {
+        parsed = value;
+    } else {
+        try {
+            parsed = JSON.parse(String(value ?? ''));
+        } catch {
+            return failure('array-json', value, 'validation.array.invalidJson');
+        }
+    }
+
+    if (!Array.isArray(parsed)) {
+        return failure('array-invalid', parsed, 'validation.array.requiredArray');
+    }
+
+    if (typeof property.minItems === 'number' && parsed.length < property.minItems) {
+        return failure('array-min-items', parsed, 'validation.array.minItems');
+    }
+    if (typeof property.maxItems === 'number' && parsed.length > property.maxItems) {
+        return failure('array-max-items', parsed, 'validation.array.maxItems');
+    }
+
+    const items = property.items;
+    if (items && typeof items === 'object' && items.type !== 'any') {
+        for (let index = 0; index < parsed.length; index += 1) {
+            const element = parsed[index];
+            if (!matchesItemType(element, items)) {
+                return {
+                    success: false,
+                    error: new ParseError([{
+                        code: 'array-item-type',
+                        input: element,
+                        path: [index],
+                        message: 'validation.array.itemType'
+                    }])
+                };
+            }
+        }
+    }
+
+    return { success: true, data: parsed };
+
+}
+
+
+function matchesItemType(value: unknown, items: PropertyItem): boolean {
+
+    switch (items.type) {
+        case 'boolean':
+            return typeof value === 'boolean';
+        case 'integer':
+            return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value);
+        case 'number':
+            return typeof value === 'number' && Number.isFinite(value);
+        case 'string':
+            return typeof value === 'string';
+        case 'object':
+            return isRecord(value);
+        case 'any':
+            return true;
+        default:
+            return false;
+    }
+
+}
+
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+
+function failure(code: string, input: unknown, message: string): ParseSafeResult {
+    return {
+        success: false,
+        error: new ParseError([{ code, input, path: [], message }])
+    };
 }

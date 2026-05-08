@@ -1,42 +1,37 @@
-import { type PreferenceProperty } from '../generated/types';
-import { translate, type TranslateOptions } from './translate';
+import type { Messages, Property } from '../types.js';
+import { createTranslator, type TranslatorOptions } from './translate.js';
 
 
-export type LocalizeResult = (property: PreferenceProperty) => PreferenceProperty;
+// Returns a copy of `property` with key-or-text fields resolved through
+// the supplied `messages` bag. Other fields pass through unchanged.
 
-export function localize(
-    messages: Record<string, string>,
-    options: TranslateOptions = {}
-): LocalizeResult {
+export function localizeProperty(
+    property: Property,
+    messages: Messages | undefined,
+    options: TranslatorOptions = {}
+): Property {
 
-    const t = translate(messages, options);
+    const t = createTranslator(messages, options);
 
-    return (property: PreferenceProperty) => {
+    const localized: Property = { ...property };
 
-        const localized: PreferenceProperty = {
-            ...property,
-            description: t(String(property.description))
-        };
+    if (typeof property.description === 'string') {
+        localized.description = t.keyOrText(property.description);
+    }
 
-        if (property.deprecationMessage) {
-            localized.deprecationMessage = t(property.deprecationMessage);
-        }
-        if (property.patternErrorMessage) {
-            localized.patternErrorMessage = t(property.patternErrorMessage);
-        }
-        if (property.enumLabels) {
-            localized.enumLabels = property.enumLabels.map((label) => {
-                return t(String(label));
-            });
-        }
-        if (Array.isArray(property.enumDescriptions)) {
-            localized.enumDescriptions = property.enumDescriptions.map((messageKey) => {
-                return t(String(messageKey));
-            });
-        }
+    if (typeof property.deprecationMessage === 'string') {
+        localized.deprecationMessage = t.keyOrText(property.deprecationMessage);
+    }
+    if (typeof property.patternErrorMessage === 'string') {
+        localized.patternErrorMessage = t.keyOrText(property.patternErrorMessage);
+    }
+    if (Array.isArray(property.enumLabels)) {
+        localized.enumLabels = property.enumLabels.map((label) => t.keyOrText(String(label)));
+    }
+    if (Array.isArray(property.enumDescriptions)) {
+        localized.enumDescriptions = property.enumDescriptions.map((description) => t.keyOrText(String(description)));
+    }
 
-        return localized;
-
-    };
+    return localized;
 
 }

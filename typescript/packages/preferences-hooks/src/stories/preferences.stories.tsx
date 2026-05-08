@@ -1,9 +1,16 @@
+import type {
+    Messages,
+    PropertyKey,
+    Schema,
+    Scope,
+    Values
+} from '@nimbox/preferences';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import propertiesFixture from '../../../../../fixtures/properties.json';
+import messagesEnFixture from '../../../../../fixtures/messages.en.json';
+import schemaFixture from '../../../../../fixtures/schema.json';
 import scopesFixture from '../../../../../fixtures/scopes.json';
 import valuesFixture from '../../../../../fixtures/values.json';
-import type { PreferenceProperty } from '../../../preferences/dist/generated/types';
 import { useEditor } from '../hooks/useEditor';
 import { usePreferences } from '../hooks/usePreferences';
 import { EditorPane } from './components/EditorPane';
@@ -13,8 +20,13 @@ import { SelectScope } from './components/SelectScope';
 
 type StoryArgs = {
     depth: number;
-    onChange: (scope: string, key: string, value: unknown) => void;
+    onChange: (scope: Scope, key: PropertyKey, value: unknown) => void;
 };
+
+
+const schema = schemaFixture as unknown as Schema;
+const messages = messagesEnFixture as unknown as Messages;
+
 
 const meta = {
     title: 'Preferences/Preferences1',
@@ -22,9 +34,7 @@ const meta = {
         layout: 'fullscreen'
     },
     argTypes: {
-        onChange: {
-            action: 'onChange'
-        }
+        onChange: { action: 'onChange' }
     },
     args: {
         depth: 1
@@ -32,21 +42,22 @@ const meta = {
     render: (args) => {
 
         const [query, setQuery] = useState('');
-        const [scope, setScope] = useState('user');
-        const [resolvedValues, setResolvedValues] = useState(
-            valuesFixture as unknown as Record<string, Record<string, unknown>>
+        const [scope, setScope] = useState<Scope>('user');
+        const [resolvedValues, setResolvedValues] = useState<Values>(
+            valuesFixture as unknown as Values
         );
 
-        const { nodes } = usePreferences({
+        const { tree } = usePreferences({
+            schema,
             scope,
             scopes: scopesFixture,
-            properties: propertiesFixture as unknown as Record<string, PreferenceProperty>,
+            messages
         });
 
         const editor = useEditor({
+            schema,
             scope,
             scopes: scopesFixture,
-            properties: propertiesFixture as unknown as Record<string, PreferenceProperty>,
             values: resolvedValues,
             onChange: async (nextScope, key, value) => {
                 setResolvedValues((current) => {
@@ -66,7 +77,12 @@ const meta = {
             <div>
 
                 <div style={{ padding: '1rem' }}>
-                    <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: '100%' }} />
+                    <input
+                        type="search"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        style={{ width: '100%' }}
+                    />
                 </div>
                 <div style={{ padding: '1rem' }}>
                     <SelectScope value={scope} onChange={setScope} scopes={scopesFixture} />
@@ -74,15 +90,15 @@ const meta = {
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: '0 0 240px' }}>
-                        <GroupPane nodes={nodes} depth={args.depth} />
+                        <GroupPane nodes={tree} depth={args.depth} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <EditorPane
-                            nodes={nodes}
+                            nodes={tree}
                             scope={scope}
                             depth={args.depth}
                             register={editor.register}
-                            preferences={editor.preferences}
+                            state={editor.state}
                             drafts={editor.drafts}
                         />
                     </div>
@@ -94,6 +110,7 @@ const meta = {
     }
 } satisfies Meta<StoryArgs>;
 export default meta;
+
 
 type Story = StoryObj<StoryArgs>;
 

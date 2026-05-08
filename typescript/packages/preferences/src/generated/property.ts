@@ -6,7 +6,7 @@
  */
 
 /**
- * One Property entry in a preferences Fragment. See docs/specification.md (Property Contract).
+ * One Property entry in a preferences Schema. See docs/specification.md (Property Contract).
  */
 export type PreferenceProperty = {
   [k: string]: unknown;
@@ -26,7 +26,7 @@ export type PreferenceProperty = {
   /**
    * Fallback value when no scope authors a value. Must satisfy `type`, `items`, declared constraints, and `enum`.
    */
-  default:
+  default?:
     | boolean
     | number
     | string
@@ -35,9 +35,9 @@ export type PreferenceProperty = {
         [k: string]: unknown;
       };
   /**
-   * Markdown text or `%key%` localization reference.
+   * Markdown text or `%key%` message reference.
    */
-  description: string;
+  description?: string;
   /**
    * Optional deprecation notice (key-or-text).
    */

@@ -1,0 +1,80 @@
+{
+    "editor.theme.mode": {
+        "type": "string",
+        "scope": "system",
+        "overridable": true,
+        "enum": ["light", "dark", "highContrast"],
+        "enumLabels": [
+            "%editor.theme.mode.light%",
+            "%editor.theme.mode.dark%",
+            "%editor.theme.mode.highContrast%"
+        ],
+        "default": "light",
+        "description": "%editor.theme.mode.description%"
+    },
+    "editor.font.size": {
+        "type": "number",
+        "scope": "global",
+        "overridable": true,
+        "minimum": 10,
+        "maximum": 32,
+        "default": 14,
+        "description": "%editor.font.size.description%"
+    },
+    "editor.font.family": {
+        "type": "string",
+        "scope": "application",
+        "overridable": false,
+        "default": "Fira Code",
+        "description": "%editor.font.family.description%"
+    },
+    "editor.extensions.enabled": {
+        "type": "array",
+        "items": { "type": "string" },
+        "scope": "application",
+        "overridable": true,
+        "minItems": 0,
+        "default": ["spellcheck", "formatter"],
+        "description": "%editor.extensions.enabled.description%"
+    },
+    "assistant.hints.enabled": {
+        "type": "boolean",
+        "scope": "user",
+        "overridable": false,
+        "default": true,
+        "description": "%assistant.hints.enabled.description%"
+    },
+    "workspace.shortcuts": {
+        "type": "object",
+        "scope": "system",
+        "overridable": false,
+        "default": {
+            "save": "CmdOrCtrl+S",
+            "open": "CmdOrCtrl+O"
+        },
+        "description": "%workspace.shortcuts.description%"
+    },
+    "notifications.digest.hours": {
+        "type": "array",
+        "items": { "type": "number" },
+        "scope": "global",
+        "overridable": true,
+        "default": [9, 17],
+        "description": "%notifications.digest.hours.description%"
+    },
+    "editor.font.advanced.ligatures.enabled": {
+        "type": "boolean",
+        "scope": "application",
+        "overridable": true,
+        "default": true,
+        "description": "%editor.font.advanced.ligatures.enabled.description%"
+    },
+    "notifications.digest.schedule.weekdays": {
+        "type": "array",
+        "items": { "type": "string" },
+        "scope": "global",
+        "overridable": true,
+        "default": ["monday", "wednesday", "friday"],
+        "description": "%notifications.digest.schedule.weekdays.description%"
+    }
+}

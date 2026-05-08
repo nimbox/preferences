@@ -1,16 +1,16 @@
-import type { PreferenceValue, PropertyItem } from '@nimbox/preferences';
+import type { PreferenceLeaf, PreferenceState } from '@nimbox/preferences';
 import type { UseEditorDraftEntry, UseEditorResult } from '../../hooks/useEditor';
 import './styles.css';
 
 
 export interface EditorItemProps {
 
-    item: PropertyItem;
+    item: PreferenceLeaf;
     breadcrumbs: string[];
 
     register: UseEditorResult['register'];
 
-    preference: PreferenceValue | undefined;
+    preference: PreferenceState | undefined;
     draft: UseEditorDraftEntry | undefined;
 
 }
