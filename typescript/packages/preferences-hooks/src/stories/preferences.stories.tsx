@@ -88,12 +88,12 @@ const meta = {
 
                     <div style={{ flex: 1, minWidth: 0, padding: '0 1rem', overflow: 'auto' }}>
                         <EditorPane
+                            key={scope}
                             nodes={tree}
                             scope={scope}
                             depth={args.depth}
                             register={editor.register}
-                            state={editor.state}
-                            drafts={editor.drafts}
+                            errors={editor.errors}
                         />
                     </div>
 

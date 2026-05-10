@@ -9,8 +9,7 @@ export interface EditorPaneProps {
     nodes: PreferenceNode[];
     depth: number;
     register: UsePreferenceEditorResult['register'];
-    state: UsePreferenceEditorResult['state'];
-    drafts: UsePreferenceEditorResult['drafts'];
+    errors: UsePreferenceEditorResult['errors'];
 }
 
 function Heading(props: {
@@ -32,11 +31,10 @@ function EditorTree(props: {
     depth: number;
     breadcrumbs: string[];
     register: UsePreferenceEditorResult['register'];
-    state: UsePreferenceEditorResult['state'];
-    drafts: UsePreferenceEditorResult['drafts'];
+    errors: UsePreferenceEditorResult['errors'];
 }) {
 
-    const { nodes, level, scope, depth, breadcrumbs, register, state, drafts } = props;
+    const { nodes, level, scope, depth, breadcrumbs, register, errors } = props;
 
     return (
         <>
@@ -54,8 +52,7 @@ function EditorTree(props: {
                                     depth={depth}
                                     breadcrumbs={breadcrumbs}
                                     register={register}
-                                    state={state}
-                                    drafts={drafts}
+                                    errors={errors}
                                 />
                             </Fragment>
                         );
@@ -69,8 +66,7 @@ function EditorTree(props: {
                             depth={depth}
                             breadcrumbs={[...breadcrumbs, node.title]}
                             register={register}
-                            state={state}
-                            drafts={drafts}
+                            errors={errors}
                         />
                     );
                 }
@@ -81,8 +77,7 @@ function EditorTree(props: {
                         item={node}
                         breadcrumbs={breadcrumbs}
                         register={register}
-                        preference={state[node.key]}
-                        draft={drafts[scope]?.[node.key]}
+                        error={errors[scope]?.[node.key]}
                     />
                 );
 
@@ -93,7 +88,7 @@ function EditorTree(props: {
 
 export function EditorPane(props: EditorPaneProps) {
 
-    const { nodes, scope, depth, register, state, drafts } = props;
+    const { nodes, scope, depth, register, errors } = props;
 
     return (
         <div>
@@ -104,8 +99,7 @@ export function EditorPane(props: EditorPaneProps) {
                 depth={depth}
                 breadcrumbs={[]}
                 register={register}
-                state={state}
-                drafts={drafts}
+                errors={errors}
             />
         </div>
     );

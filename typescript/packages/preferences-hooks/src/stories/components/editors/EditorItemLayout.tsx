@@ -1,6 +1,6 @@
-import type { PreferenceLeaf, PreferenceState } from '@nimbox/preferences';
+import type { PreferenceLeaf } from '@nimbox/preferences';
 import type { ReactNode } from 'react';
-import type { UsePreferenceEditorDraftEntry, UsePreferenceEditorResult } from '../../../hooks/usePreferenceEditor';
+import type { EditorError, UsePreferenceEditorResult } from '../../../hooks/usePreferenceEditor';
 import '../styles.css';
 
 
@@ -11,25 +11,26 @@ export interface EditorItemProps {
 
     register: UsePreferenceEditorResult['register'];
 
-    preference: PreferenceState | undefined;
-    draft: UsePreferenceEditorDraftEntry | undefined;
+    error: EditorError | undefined;
 
 }
+
 
 export interface EditorItemLayoutProps {
 
     item: PreferenceLeaf;
     breadcrumbs: string[];
 
-    draft: UsePreferenceEditorDraftEntry | undefined;
+    error: EditorError | undefined;
 
     children: ReactNode;
 
 }
 
+
 export function EditorItemLayout(props: EditorItemLayoutProps) {
 
-    const { item, breadcrumbs, draft, children } = props;
+    const { item, breadcrumbs, error, children } = props;
 
     return (
         <div className="editor-item">
@@ -49,9 +50,9 @@ export function EditorItemLayout(props: EditorItemLayoutProps) {
                 {children}
             </div>
 
-            {draft?.error && (
-                <div>
-                    {JSON.stringify(draft.error)}
+            {error && (
+                <div style={{ color: 'crimson' }}>
+                    {error.message}
                 </div>
             )}
 

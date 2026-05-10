@@ -1,22 +1,16 @@
-import { ParseError, parseSafe, resolveAtScope, type Diagnostic, type PreferenceState, type Property, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
+import { parseSafe, resolveAtScope, type Diagnostic, type ParseIssue, type PreferenceState, type Property, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Dispatch, SetStateAction } from 'react';
-import { useMemo, useState } from 'react';
-import type { ChangeHandler, RefCallback, RegisterElement } from '../types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeHandler, RegisterElement } from '../types';
 
 
-export interface UsePreferenceEditorCommitError {
-    type: 'commit';
-    message: string;
-}
+export type EditorError =
+    | { kind: 'parse'; issues: ParseIssue[]; message: string; rawValue: string }
+    | { kind: 'commit'; message: string; rawValue: string };
 
-export type ParseErrorLike = ParseError | UsePreferenceEditorCommitError;
 
-export interface UsePreferenceEditorDraftEntry {
-    value: string;
-    error: ParseErrorLike | null;
-}
+export type EditorErrors = Record<Scope, Record<PropertyKey, EditorError>>;
 
-export type UsePreferenceEditorDrafts = Record<Scope, Record<PropertyKey, UsePreferenceEditorDraftEntry>>;
 
 export interface UsePreferenceEditorProps {
 
@@ -30,103 +24,127 @@ export interface UsePreferenceEditorProps {
 
 }
 
+
 export interface UsePreferenceEditorRegisterResult {
 
-    ref: RefCallback;
+    name: PropertyKey;
 
-    name: string;
+    defaultValue: string;
+    defaultChecked: boolean;
 
     onChange: ChangeHandler;
     onBlur: ChangeHandler;
 
 }
 
-export interface UsePreferenceEditorRegisterOptions {
-    mode: 'change' | 'blur';
-}
 
 export interface UsePreferenceEditorResult {
 
     state: Record<PropertyKey, PreferenceState>;
     diagnostics: Diagnostic[];
 
-    drafts: UsePreferenceEditorDrafts;
+    errors: EditorErrors;
 
-    register: (key: PropertyKey, options: UsePreferenceEditorRegisterOptions) => UsePreferenceEditorRegisterResult;
+    register: (key: PropertyKey) => UsePreferenceEditorRegisterResult;
     reset: (key: PropertyKey) => void;
 
+}
+
+
+interface EditorConfig {
+    scope: Scope;
+    scopes: ReadonlyArray<Scope>;
+    schema: Schema;
+    values: Values;
+    onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
 }
 
 
 export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePreferenceEditorResult {
 
     const { schema, scope, scopes, values, onChange } = props;
-    const [drafts, setDrafts] = useState<UsePreferenceEditorDrafts>({});
+
+    const [errors, setErrors] = useState<EditorErrors>({});
+
+    // Latest config snapshot, read by event handlers at commit time so
+    // async commits never write to a stale scope and so `register` can
+    // remain stable across renders.
+    const configRef = useRef<EditorConfig>({ scope, scopes, schema, values, onChange });
+    useEffect(() => {
+        configRef.current = { scope, scopes, schema, values, onChange };
+    });
 
     const { state, diagnostics } = useMemo(() => {
         return resolveAtScope(scope, scopes, schema, values);
     }, [scope, scopes, schema, values]);
 
+    const commit = useCallback((event: { target: RegisterElement }, key: PropertyKey): void => {
+        void runCommit({
+            event,
+            key,
+            configRef,
+            setErrors
+        });
+    }, []);
+
+    const register = useCallback((key: PropertyKey): UsePreferenceEditorRegisterResult => {
+
+        const cfg = configRef.current;
+        const property = cfg.schema[key];
+        const errored = errors[cfg.scope]?.[key];
+        const sourceValue = errored ? errored.rawValue : state[key]?.value;
+
+        const timing = property ? commitTiming(property) : 'blur';
+
+        return {
+            name: key,
+            defaultValue: toInputValue(sourceValue),
+            defaultChecked: toInputChecked(sourceValue),
+            onChange: (event) => {
+                if (timing === 'change') {
+                    commit(event, key);
+                }
+            },
+            onBlur: (event) => {
+                if (timing === 'blur') {
+                    commit(event, key);
+                }
+            }
+        };
+
+    }, [errors, state, commit]);
+
+    const reset = useCallback((key: PropertyKey) => {
+        setErrors((current) => clearErrorEntry(current, configRef.current.scope, key));
+    }, []);
+
     return {
         state,
         diagnostics,
-        drafts,
-        register: (key: PropertyKey, options: UsePreferenceEditorRegisterOptions) => {
-            return {
-                name: key,
-                ref: (instance) => {
-
-                    if (!instance) {
-                        return;
-                    }
-
-                    const draftValue = drafts[scope]?.[key]?.value;
-                    const value = draftValue ?? state[key]?.value;
-                    if (instance.type === 'checkbox') {
-                        (instance as HTMLInputElement).checked = toInputChecked(value);
-                        return;
-                    }
-
-                    instance.value = toInputValue(value);
-                    return;
-
-                },
-                onChange: (event) => {
-                    if (options.mode !== 'change') {
-                        return;
-                    }
-                    void commitOnEvent({
-                        event,
-                        key,
-                        scope,
-                        property: schema[key],
-                        onChange,
-                        setDrafts
-                    });
-                },
-                onBlur: (event) => {
-                    if (options.mode !== 'blur') {
-                        return;
-                    }
-                    void commitOnEvent({
-                        event,
-                        key,
-                        scope,
-                        property: schema[key],
-                        onChange,
-                        setDrafts
-                    });
-                }
-            };
-        },
-        reset: (key: PropertyKey) => {
-            setDrafts((currentDrafts) => clearDraftEntry(currentDrafts, scope, key));
-        }
+        errors,
+        register,
+        reset
     };
 
 }
 
+
 // Utils
+
+function commitTiming(property: Property): 'change' | 'blur' {
+
+    if (property.type === 'boolean') {
+        return 'change';
+    }
+    if (property.type === 'string'
+        && Array.isArray(property.enum)
+        && property.enum.length > 0) {
+        return 'change';
+    }
+    return 'blur';
+
+}
+
 
 function toInputChecked(value: unknown): boolean {
 
@@ -137,6 +155,7 @@ function toInputChecked(value: unknown): boolean {
     return Boolean(value);
 
 }
+
 
 function toInputValue(value: unknown): string {
 
@@ -156,114 +175,103 @@ function toInputValue(value: unknown): string {
 
 }
 
-async function commitOnEvent(params: {
+
+async function runCommit(params: {
     event: { target: RegisterElement };
     key: PropertyKey;
-    scope: Scope;
-    property: Property | undefined;
-    onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
-    setDrafts: Dispatch<SetStateAction<UsePreferenceEditorDrafts>>;
+    configRef: { current: EditorConfig };
+    setErrors: Dispatch<SetStateAction<EditorErrors>>;
 }): Promise<void> {
 
-    const { event, key, scope, property, onChange, setDrafts } = params;
-    const rawDraftValue = isCheckboxInput(event.target)
+    const { event, key, configRef, setErrors } = params;
+    const cfg = configRef.current;
+    const property = cfg.schema[key];
+
+    const rawValue = isCheckboxInput(event.target)
         ? String(event.target.checked)
         : String(event.target.value ?? '');
-    const rawInputValue: unknown = isCheckboxInput(event.target)
+    const inputValue: unknown = isCheckboxInput(event.target)
         ? event.target.checked
         : event.target.value;
 
-    if (property) {
-        const result = parseSafe(property, rawInputValue);
-        if (!result.success) {
-            setDrafts((currentDrafts) => setDraftEntry(currentDrafts, scope, key, {
-                value: rawDraftValue,
-                error: result.error
-            }));
-            return;
-        }
+    // Without a schema entry there is nothing to parse against. The
+    // dispatcher should never reach here for unknown keys, so treat
+    // it as a programmer error and skip the commit.
+    if (!property) {
+        return;
+    }
 
-        try {
-            await onChange(scope, key, result.data);
-            setDrafts((currentDrafts) => clearDraftEntry(currentDrafts, scope, key));
-        } catch (error) {
-            setDrafts((currentDrafts) => setDraftEntry(currentDrafts, scope, key, {
-                value: rawDraftValue,
-                error: createCommitError(error)
-            }));
-        }
+    const result = parseSafe(property, inputValue);
+    if (!result.success) {
+        setErrors((current) => setErrorEntry(current, cfg.scope, key, {
+            kind: 'parse',
+            issues: result.error.issues,
+            message: result.error.message,
+            rawValue
+        }));
         return;
     }
 
     try {
-        await onChange(scope, key, rawInputValue);
-        setDrafts((currentDrafts) => clearDraftEntry(currentDrafts, scope, key));
+        await cfg.onChange(cfg.scope, key, result.data);
+        setErrors((current) => clearErrorEntry(current, cfg.scope, key));
     } catch (error) {
-        setDrafts((currentDrafts) => setDraftEntry(currentDrafts, scope, key, {
-            value: rawDraftValue,
-            error: createCommitError(error)
+        setErrors((current) => setErrorEntry(current, cfg.scope, key, {
+            kind: 'commit',
+            message: error instanceof Error ? error.message : 'Failed to save preference',
+            rawValue
         }));
     }
 
 }
 
+
 function isCheckboxInput(target: RegisterElement): target is HTMLInputElement {
     return target instanceof HTMLInputElement && target.type === 'checkbox';
 }
 
-function createCommitError(error: unknown): UsePreferenceEditorCommitError {
 
-    const message = error instanceof Error
-        ? error.message
-        : 'Failed to save preference';
-
-    return {
-        type: 'commit',
-        message
-    };
-
-}
-
-function setDraftEntry(
-    currentDrafts: UsePreferenceEditorDrafts,
+function setErrorEntry(
+    current: EditorErrors,
     scope: Scope,
     key: PropertyKey,
-    entry: UsePreferenceEditorDraftEntry
-): UsePreferenceEditorDrafts {
+    entry: EditorError
+): EditorErrors {
 
     return {
-        ...currentDrafts,
+        ...current,
         [scope]: {
-            ...(currentDrafts[scope] ?? {}),
+            ...(current[scope] ?? {}),
             [key]: entry
         }
     };
 
 }
 
-function clearDraftEntry(
-    currentDrafts: UsePreferenceEditorDrafts,
+
+function clearErrorEntry(
+    current: EditorErrors,
     scope: Scope,
     key: PropertyKey
-): UsePreferenceEditorDrafts {
+): EditorErrors {
 
-    const scopeDrafts = currentDrafts[scope];
-    if (!scopeDrafts || !(key in scopeDrafts)) {
-        return currentDrafts;
+    const scopeErrors = current[scope];
+    if (!scopeErrors || !(key in scopeErrors)) {
+        return current;
     }
 
-    const nextScopeDrafts = { ...scopeDrafts };
-    delete nextScopeDrafts[key];
+    const nextScopeErrors = { ...scopeErrors };
+    delete nextScopeErrors[key];
 
-    if (Object.keys(nextScopeDrafts).length === 0) {
-        const nextDrafts = { ...currentDrafts };
-        delete nextDrafts[scope];
-        return nextDrafts;
+    if (Object.keys(nextScopeErrors).length === 0) {
+        const next = { ...current };
+        delete next[scope];
+        return next;
     }
 
     return {
-        ...currentDrafts,
-        [scope]: nextScopeDrafts
+        ...current,
+        [scope]: nextScopeErrors
     };
 
 }
