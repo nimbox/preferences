@@ -2,7 +2,6 @@ export interface SelectScopeProps {
 
     value: string;
     scopes: string[];
-
     onChange: (value: string) => void;
 
 }

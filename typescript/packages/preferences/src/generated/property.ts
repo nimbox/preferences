@@ -8,7 +8,7 @@
 /**
  * One Property entry in a preferences Schema. See docs/specification.md (Property Contract).
  */
-export type PreferenceProperty = {
+export type Property = {
   [k: string]: unknown;
 } & {
   /**
@@ -46,7 +46,7 @@ export type PreferenceProperty = {
    * Optional sibling-ordering hint for hierarchical display.
    */
   order?: number;
-  items?: PreferencePropertyItem;
+  items?: PropertyItem;
   /**
    * Allowed values. Only valid for boolean, integer, number, or string properties.
    *
@@ -103,6 +103,6 @@ export type PreferenceProperty = {
 /**
  * Element shape. Required when `type` is `array`; forbidden otherwise.
  */
-export interface PreferencePropertyItem {
+export interface PropertyItem {
   type: "boolean" | "integer" | "number" | "string" | "object" | "any";
 }

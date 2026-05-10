@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://schemas.nimbox.com/preferences/v1/messages.schema.json",
-    "title": "PreferenceMessages",
+    "title": "Messages",
     "description": "Flat map from message key to display text, already resolved for one locale. See docs/specification.md (Messages Contract). Locale selection and fallback across locales are host concerns.",
     "type": "object",
     "propertyNames": {

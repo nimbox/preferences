@@ -1,48 +1,36 @@
-import {
-    parseSafe,
-    ParseError,
-    resolveAtScope,
-    type PreferenceState,
-    type Property,
-    type PropertyKey,
-    type Schema,
-    type Scope,
-    type Values,
-    type Warning
-} from '@nimbox/preferences';
-import { useMemo, useState } from 'react';
+import { ParseError, parseSafe, resolveAtScope, type Diagnostic, type PreferenceState, type Property, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Dispatch, SetStateAction } from 'react';
+import { useMemo, useState } from 'react';
 import type { ChangeHandler, RefCallback, RegisterElement } from '../types';
 
 
-export interface UseEditorCommitError {
+export interface UsePreferenceEditorCommitError {
     type: 'commit';
     message: string;
 }
 
-export type ParseErrorLike = ParseError | UseEditorCommitError;
+export type ParseErrorLike = ParseError | UsePreferenceEditorCommitError;
 
-export interface UseEditorDraftEntry {
+export interface UsePreferenceEditorDraftEntry {
     value: string;
     error: ParseErrorLike | null;
 }
 
-export type UseEditorDrafts = Record<Scope, Record<PropertyKey, UseEditorDraftEntry>>;
+export type UsePreferenceEditorDrafts = Record<Scope, Record<PropertyKey, UsePreferenceEditorDraftEntry>>;
 
-export interface UseEditorProps {
-
-    schema: Schema;
+export interface UsePreferenceEditorProps {
 
     scope: Scope;
     scopes: ReadonlyArray<Scope>;
 
+    schema: Schema;
     values: Values;
 
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
 
 }
 
-export interface UseEditorRegisterResult {
+export interface UsePreferenceEditorRegisterResult {
 
     ref: RefCallback;
 
@@ -53,37 +41,37 @@ export interface UseEditorRegisterResult {
 
 }
 
-export interface UseEditorRegisterOptions {
+export interface UsePreferenceEditorRegisterOptions {
     mode: 'change' | 'blur';
 }
 
-export interface UseEditorResult {
+export interface UsePreferenceEditorResult {
 
     state: Record<PropertyKey, PreferenceState>;
-    warnings: Warning[];
+    diagnostics: Diagnostic[];
 
-    drafts: UseEditorDrafts;
+    drafts: UsePreferenceEditorDrafts;
 
-    register: (key: PropertyKey, options: UseEditorRegisterOptions) => UseEditorRegisterResult;
+    register: (key: PropertyKey, options: UsePreferenceEditorRegisterOptions) => UsePreferenceEditorRegisterResult;
     reset: (key: PropertyKey) => void;
 
 }
 
 
-export function useEditor(props: UseEditorProps): UseEditorResult {
+export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePreferenceEditorResult {
 
     const { schema, scope, scopes, values, onChange } = props;
-    const [drafts, setDrafts] = useState<UseEditorDrafts>({});
+    const [drafts, setDrafts] = useState<UsePreferenceEditorDrafts>({});
 
-    const { state, warnings } = useMemo(() => {
+    const { state, diagnostics } = useMemo(() => {
         return resolveAtScope(scope, scopes, schema, values);
     }, [scope, scopes, schema, values]);
 
     return {
         state,
-        warnings,
+        diagnostics,
         drafts,
-        register: (key: PropertyKey, options: UseEditorRegisterOptions) => {
+        register: (key: PropertyKey, options: UsePreferenceEditorRegisterOptions) => {
             return {
                 name: key,
                 ref: (instance) => {
@@ -100,6 +88,7 @@ export function useEditor(props: UseEditorProps): UseEditorResult {
                     }
 
                     instance.value = toInputValue(value);
+                    return;
 
                 },
                 onChange: (event) => {
@@ -163,7 +152,7 @@ function toInputValue(value: unknown): string {
         return String(value);
     }
 
-    return JSON.stringify(value);
+    return JSON.stringify(value, null, 2);
 
 }
 
@@ -173,7 +162,7 @@ async function commitOnEvent(params: {
     scope: Scope;
     property: Property | undefined;
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
-    setDrafts: Dispatch<SetStateAction<UseEditorDrafts>>;
+    setDrafts: Dispatch<SetStateAction<UsePreferenceEditorDrafts>>;
 }): Promise<void> {
 
     const { event, key, scope, property, onChange, setDrafts } = params;
@@ -222,7 +211,7 @@ function isCheckboxInput(target: RegisterElement): target is HTMLInputElement {
     return target instanceof HTMLInputElement && target.type === 'checkbox';
 }
 
-function createCommitError(error: unknown): UseEditorCommitError {
+function createCommitError(error: unknown): UsePreferenceEditorCommitError {
 
     const message = error instanceof Error
         ? error.message
@@ -236,11 +225,11 @@ function createCommitError(error: unknown): UseEditorCommitError {
 }
 
 function setDraftEntry(
-    currentDrafts: UseEditorDrafts,
+    currentDrafts: UsePreferenceEditorDrafts,
     scope: Scope,
     key: PropertyKey,
-    entry: UseEditorDraftEntry
-): UseEditorDrafts {
+    entry: UsePreferenceEditorDraftEntry
+): UsePreferenceEditorDrafts {
 
     return {
         ...currentDrafts,
@@ -253,10 +242,10 @@ function setDraftEntry(
 }
 
 function clearDraftEntry(
-    currentDrafts: UseEditorDrafts,
+    currentDrafts: UsePreferenceEditorDrafts,
     scope: Scope,
     key: PropertyKey
-): UseEditorDrafts {
+): UsePreferenceEditorDrafts {
 
     const scopeDrafts = currentDrafts[scope];
     if (!scopeDrafts || !(key in scopeDrafts)) {

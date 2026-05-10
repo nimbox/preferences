@@ -1,73 +1,47 @@
-import type { PreferenceLeaf, PreferenceState } from '@nimbox/preferences';
-import type { UseEditorDraftEntry, UseEditorResult } from '../../hooks/useEditor';
-import './styles.css';
+import { AnyEditor } from './editors/AnyEditor';
+import { BooleanEditor } from './editors/BooleanEditor';
+import { type EditorItemProps } from './editors/EditorItemLayout';
+import { IntegerEditor } from './editors/IntegerEditor';
+import { NumberEditor } from './editors/NumberEditor';
+import { ObjectEditor } from './editors/ObjectEditor';
+import { StringEditor } from './editors/StringEditor';
+import { StringEnumEditor } from './editors/StringEnumEditor';
 
 
-export interface EditorItemProps {
-
-    item: PreferenceLeaf;
-    breadcrumbs: string[];
-
-    register: UseEditorResult['register'];
-
-    preference: PreferenceState | undefined;
-    draft: UseEditorDraftEntry | undefined;
-
-}
+export type { EditorItemProps } from './editors/EditorItemLayout';
 
 export function EditorItem(props: EditorItemProps) {
 
-    const { item, breadcrumbs, register, draft } = props;
+    const { property } = props.item;
 
-    const isBoolean = item.property.type === 'boolean';
-    const isStringEnum = item.property.type === 'string'
-        && Array.isArray(item.property.enum)
-        && item.property.enum.length > 0;
+    switch (property.type) {
 
-    const mode = isBoolean || isStringEnum ? 'change' : 'blur';
-    const registerProps = register(item.key, { mode });
+        case 'string': {
+            const hasEnum = Array.isArray(property.enum) && property.enum.length > 0;
+            return hasEnum ? <StringEnumEditor {...props} /> : <StringEditor {...props} />;
+        }
 
-    return (
-        <div className="editor-item">
+        case 'boolean':
+            return <BooleanEditor {...props} />;
 
-            <div>
-                {breadcrumbs.length > 0 && (<span>{breadcrumbs.join(' » ')}{' » '}</span>)}
-                {item.title}
-            </div>
+        case 'number':
+            return <NumberEditor {...props} />;
 
-            {item.property.description && (
-                <div>
-                    {item.property.description}
-                </div>
-            )}
+        case 'integer':
+            return <IntegerEditor {...props} />;
 
-            <div>
-                {isStringEnum ? (
-                    <select {...registerProps}>
-                        {item.property.enum?.map((option, index) => {
-                            const label = item.property.enumLabels?.[index] ?? String(option);
-                            return (
-                                <option key={`${item.key}-${String(option)}`} value={String(option)}>
-                                    {label}
-                                </option>
-                            );
-                        })}
-                    </select>
-                ) : (
-                    <input
-                        type={isBoolean ? 'checkbox' : 'text'}
-                        {...registerProps}
-                    />
-                )}
-            </div>
+        case 'object':
+            return <ObjectEditor {...props} />;
 
-            {draft?.error && (
-                <div>
-                    {JSON.stringify(draft.error)}
-                </div>
-            )}
+        case 'any':
+            return <AnyEditor {...props} />;
 
-        </div>
-    );
+        default:
+            // `array` and unknown types fall through to the generic
+            // JSON editor so the value remains editable until a
+            // dedicated editor is implemented.
+            return <AnyEditor {...props} />;
+
+    }
 
 }

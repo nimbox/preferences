@@ -1,18 +1,12 @@
-import type {
-    Messages,
-    PropertyKey,
-    Schema,
-    Scope,
-    Values
-} from '@nimbox/preferences';
+import { createPropertyFilter, type Messages, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import messagesEnFixture from '../../../../../fixtures/messages.en.json';
 import schemaFixture from '../../../../../fixtures/schema.json';
 import scopesFixture from '../../../../../fixtures/scopes.json';
 import valuesFixture from '../../../../../fixtures/values.json';
-import { useEditor } from '../hooks/useEditor';
-import { usePreferences } from '../hooks/usePreferences';
+import { usePreferenceEditor } from '../hooks/usePreferenceEditor';
+import { usePreferenceTree } from '../hooks/usePreferenceTree';
 import { EditorPane } from './components/EditorPane';
 import { GroupPane } from './components/GroupPane';
 import { SelectScope } from './components/SelectScope';
@@ -23,10 +17,8 @@ type StoryArgs = {
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => void;
 };
 
-
 const schema = schemaFixture as unknown as Schema;
 const messages = messagesEnFixture as unknown as Messages;
-
 
 const meta = {
     title: 'Preferences/Preferences1',
@@ -43,18 +35,19 @@ const meta = {
 
         const [query, setQuery] = useState('');
         const [scope, setScope] = useState<Scope>('user');
-        const [resolvedValues, setResolvedValues] = useState<Values>(
-            valuesFixture as unknown as Values
-        );
+        const [resolvedValues, setResolvedValues] = useState<Values>(valuesFixture as unknown as Values);
 
-        const { tree } = usePreferences({
+        const filter = useMemo(() => createPropertyFilter(query), [query]);
+
+        const { tree } = usePreferenceTree({
             schema,
             scope,
             scopes: scopesFixture,
-            messages
+            messages,
+            filter
         });
 
-        const editor = useEditor({
+        const editor = usePreferenceEditor({
             schema,
             scope,
             scopes: scopesFixture,
@@ -74,25 +67,26 @@ const meta = {
         });
 
         return (
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '75%', height: '100vh', marginLeft: 'auto', marginRight: 'auto' }}>
 
                 <div style={{ padding: '1rem' }}>
-                    <input
-                        type="search"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        style={{ width: '100%' }}
-                    />
+                    <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} style={{ width: '100%' }} />
                 </div>
+
                 <div style={{ padding: '1rem' }}>
                     <SelectScope value={scope} onChange={setScope} scopes={scopesFixture} />
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: '0 0 240px' }}>
-                        <GroupPane nodes={tree} depth={args.depth} />
+                <div style={{ display: 'flex', gap: '1rem', flex: 1, minHeight: 0 }}>
+
+                    <div style={{ flex: '0 0 240px', padding: '0 1rem', overflow: 'auto' }}>
+                        <GroupPane
+                            nodes={tree}
+                            depth={args.depth}
+                        />
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+
+                    <div style={{ flex: 1, minWidth: 0, padding: '0 1rem', overflow: 'auto' }}>
                         <EditorPane
                             nodes={tree}
                             scope={scope}
@@ -102,6 +96,7 @@ const meta = {
                             drafts={editor.drafts}
                         />
                     </div>
+
                 </div>
 
             </div>

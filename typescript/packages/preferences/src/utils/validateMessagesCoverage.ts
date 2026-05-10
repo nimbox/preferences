@@ -1,21 +1,18 @@
-import type { Messages, Schema, Warning } from '../types.js';
-import { IssueCode, warning } from './issues.js';
-
-
-// Spec: `^%[A-Za-z][A-Za-z0-9._-]*%$`.
-const KEY_REFERENCE_PATTERN = /^%[A-Za-z][A-Za-z0-9._-]*%$/;
+import type { Diagnostic, Messages, Schema } from '../types';
+import { DiagnosticCode, warning } from './diagnostics';
+import { extractKey, isKeyReference } from './messages';
 
 
 // Walks every property's key-or-text fields, every property key (used
 // as a leaf tree label), and every implied group prefix; warns for any
 // referenced message key that is missing from `messages`. Missing keys
-// never invalidate a Schema; they only emit warnings.
+// never invalidate a Schema; they only emit warning-severity diagnostics.
 export function validateMessagesCoverage(
     schema: Schema,
     messages: Messages | undefined
-): Warning[] {
+): Diagnostic[] {
 
-    const warnings: Warning[] = [];
+    const diagnostics: Diagnostic[] = [];
 
     const present = (key: string): boolean => {
         if (!messages) {
@@ -26,8 +23,8 @@ export function validateMessagesCoverage(
 
     const ensureKey = (key: string, label: string) => {
         if (!present(key)) {
-            warnings.push(warning({
-                code: IssueCode.MISSING_MESSAGE_KEY,
+            diagnostics.push(warning({
+                code: DiagnosticCode.MISSING_MESSAGE_KEY,
                 key,
                 message: `Missing message key "${key}" (${label}).`
             }));
@@ -63,7 +60,7 @@ export function validateMessagesCoverage(
         ensureKey(groupKey, `tree label for group "${groupKey}"`);
     }
 
-    return warnings;
+    return diagnostics;
 
 }
 
@@ -73,12 +70,8 @@ function coverKeyOrText(
     label: string,
     ensureKey: (key: string, label: string) => void
 ): void {
-    if (typeof value !== 'string') {
-        return;
-    }
-    if (KEY_REFERENCE_PATTERN.test(value)) {
-        const inner = value.slice(1, -1);
-        ensureKey(inner, label);
+    if (isKeyReference(value)) {
+        ensureKey(extractKey(value), label);
     }
 }
 

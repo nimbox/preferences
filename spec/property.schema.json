@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://schemas.nimbox.com/preferences/v1/property.schema.json",
-    "title": "PreferenceProperty",
+    "title": "Property",
     "description": "One Property entry in a preferences Schema. See docs/specification.md (Property Contract).",
     "type": "object",
     "required": ["type", "scope", "overridable"],
@@ -177,7 +177,7 @@
     "additionalProperties": true,
     "$defs": {
         "item": {
-            "title": "PreferencePropertyItem",
+            "title": "PropertyItem",
             "description": "Element shape for `array` properties. Nested arrays are not supported; use `any` if elements may themselves be arrays.",
             "type": "object",
             "required": ["type"],

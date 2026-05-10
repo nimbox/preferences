@@ -1,12 +1,10 @@
-import type { Issue, Schema, Warning } from '../types.js';
-import { IssueCode, issue } from './issues.js';
+import type { Diagnostic, Schema } from '../types';
+import { DiagnosticCode, error } from './diagnostics';
 
 
 export interface ValidateSchemaResult {
-    errors: Issue[];
-    warnings: Warning[];
+    diagnostics: Diagnostic[];
 }
-
 
 // Composed-schema invariants. Per-property structural rules live in
 // `validateProperties` / `validateProperty`. This function checks that
@@ -14,8 +12,7 @@ export interface ValidateSchemaResult {
 // property key — i.e. no property doubles as a group node.
 export function validateSchema(schema: Schema): ValidateSchemaResult {
 
-    const errors: Issue[] = [];
-    const warnings: Warning[] = [];
+    const diagnostics: Diagnostic[] = [];
 
     const propertyKeys = Object.keys(schema);
     const propertyKeySet = new Set(propertyKeys);
@@ -25,8 +22,8 @@ export function validateSchema(schema: Schema): ValidateSchemaResult {
         for (let count = 1; count < segments.length; count += 1) {
             const prefix = segments.slice(0, count).join('.');
             if (propertyKeySet.has(prefix)) {
-                errors.push(issue({
-                    code: IssueCode.GROUP_PROPERTY_COLLISION,
+                diagnostics.push(error({
+                    code: DiagnosticCode.GROUP_PROPERTY_COLLISION,
                     key: prefix,
                     message: `Property "${prefix}" collides with the group node implied by "${key}".`
                 }));
@@ -34,6 +31,6 @@ export function validateSchema(schema: Schema): ValidateSchemaResult {
         }
     }
 
-    return { errors, warnings };
+    return { diagnostics };
 
 }

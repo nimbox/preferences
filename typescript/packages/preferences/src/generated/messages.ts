@@ -8,6 +8,6 @@
 /**
  * Flat map from message key to display text, already resolved for one locale. See docs/specification.md (Messages Contract). Locale selection and fallback across locales are host concerns.
  */
-export interface PreferenceMessages {
+export interface Messages {
   [k: string]: string;
 }

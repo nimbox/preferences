@@ -1,11 +1,11 @@
-import type { Issue, PropertyKey, Scope, Warning } from '../types.js';
+import type { Diagnostic } from '../types';
 
 
 // Stable diagnostic codes. Some are taken verbatim from
 // docs/specification.md "Example Validation Errors"; the rest follow the
 // same SHOUTING_SNAKE_CASE convention.
 
-export const IssueCode = {
+export const DiagnosticCode = {
 
     // Property contract
 
@@ -34,7 +34,7 @@ export const IssueCode = {
     BOUND_INVERTED: 'BOUND_INVERTED',
     INVALID_PATTERN: 'INVALID_PATTERN',
 
-    // Messages coverage (warnings)
+    // Messages coverage
 
     MISSING_MESSAGE_KEY: 'MISSING_MESSAGE_KEY',
 
@@ -52,24 +52,13 @@ export const IssueCode = {
 
 } as const;
 
-export type IssueCode = typeof IssueCode[keyof typeof IssueCode];
+export type DiagnosticCode = typeof DiagnosticCode[keyof typeof DiagnosticCode];
 
 
-export interface IssueInit {
-
-    code: IssueCode;
-    message: string;
-
-    scope?: Scope;
-    key?: PropertyKey;
-    path?: ReadonlyArray<string | number>;
-
+export function error(diagnostic: Omit<Diagnostic, 'severity'> & { code: DiagnosticCode }): Diagnostic {
+    return { ...diagnostic, severity: 'error' };
 }
 
-export function issue(init: IssueInit): Issue {
-    return { ...init };
-}
-
-export function warning(init: IssueInit): Warning {
-    return { ...init };
+export function warning(diagnostic: Omit<Diagnostic, 'severity'> & { code: DiagnosticCode }): Diagnostic {
+    return { ...diagnostic, severity: 'warning' };
 }

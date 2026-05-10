@@ -1,18 +1,11 @@
-import type {
-    PreferenceState,
-    PropertyKey,
-    Schema,
-    Scope,
-    Values,
-    Warning
-} from '../types.js';
-import { IssueCode, warning } from './issues.js';
+import type { Diagnostic, PreferenceState, PropertyKey, Schema, Scope, Values } from '../types';
+import { DiagnosticCode, warning } from './diagnostics';
 
 
 export interface ResolveAtScopeResult {
 
     state: Record<PropertyKey, PreferenceState>;
-    warnings: Warning[];
+    diagnostics: Diagnostic[];
 
 }
 
@@ -39,7 +32,7 @@ export function resolveAtScope(
     values: Values
 ): ResolveAtScopeResult {
 
-    const warnings: Warning[] = [];
+    const diagnostics: Diagnostic[] = [];
     const state: Record<PropertyKey, PreferenceState> = {};
 
     const selectedScope = scope && scopes.includes(scope)
@@ -51,8 +44,8 @@ export function resolveAtScope(
 
         const propertyScopeIndex = scopes.indexOf(property.scope);
         if (propertyScopeIndex === -1) {
-            warnings.push(warning({
-                code: IssueCode.UNKNOWN_PROPERTY_SCOPE,
+            diagnostics.push(warning({
+                code: DiagnosticCode.UNKNOWN_PROPERTY_SCOPE,
                 key,
                 scope: property.scope,
                 message: `Property "${key}" declares unknown scope "${property.scope}".`
@@ -105,8 +98,8 @@ export function resolveAtScope(
                 const downstreamScope = scopes[index];
                 if (downstreamScope === undefined) continue;
                 if (isPresent(values, downstreamScope, key)) {
-                    warnings.push(warning({
-                        code: IssueCode.NON_OVERRIDABLE_OVERRIDE,
+                    diagnostics.push(warning({
+                        code: DiagnosticCode.NON_OVERRIDABLE_OVERRIDE,
                         key,
                         scope: downstreamScope,
                         message: `Value for non-overridable "${key}" at scope "${downstreamScope}" is ignored: locked at "${property.scope}".`
@@ -117,7 +110,7 @@ export function resolveAtScope(
 
     }
 
-    return { state, warnings };
+    return { state, diagnostics };
 
 }
 

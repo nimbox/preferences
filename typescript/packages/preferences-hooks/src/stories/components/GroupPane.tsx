@@ -1,5 +1,5 @@
-import type { PreferenceGroup, PreferenceNode } from '@nimbox/preferences';
-import { useMemo } from 'react';
+import type { PreferenceGroup, PreferenceNode, PropertyKey } from '@nimbox/preferences';
+import { useCallback, useMemo, useState } from 'react';
 
 
 export interface GroupPaneProps {
@@ -7,57 +7,110 @@ export interface GroupPaneProps {
     depth: number;
 }
 
-function filterTree(nodes: PreferenceNode[], depth: number, level = 0): PreferenceGroup[] {
+export function GroupPane(props: GroupPaneProps) {
 
-    const result: PreferenceGroup[] = [];
+    const { nodes, depth } = props;
 
-    for (const node of nodes) {
-        if (node.kind !== 'group') continue;
-        const children =
-            level < depth
-                ? filterTree(node.children, depth, level + 1)
-                : [];
-        result.push({ ...node, children });
-    }
+    const groups = useMemo(
+        () => nodes.filter((n): n is PreferenceGroup => n.kind === 'group'),
+        [nodes]
+    );
 
-    return result;
+    const [expandedKeys, setExpandedKeys] = useState<Set<PropertyKey>>(() => new Set());
 
-}
+    const isExpanded = useCallback(
+        (key: PropertyKey) => expandedKeys.has(key),
+        [expandedKeys]
+    );
 
-function GroupRow(props: { group: PreferenceGroup; level: number }) {
-
-    const { group, level } = props;
+    const onToggle = useCallback((key: PropertyKey) => {
+        setExpandedKeys((current) => {
+            const next = new Set(current);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }, []);
 
     return (
         <div>
-
-            <div style={{ paddingLeft: `${level * 0.75}rem` }}>{group.title}</div>
-
-            {/*
-             * `PropertyGroup.children` is typed as `PropertyNode[]` so the 
-             * guard narrows to `PropertyGroup`. After `filterGroupTree`, 
-             * every child is a group at runtime.
-             */}
-            {group.children.map((g) => (g.kind === 'group')
-                ? (<GroupRow key={g.key} group={g} level={level + 1} />)
-                : null
-            )}
-
+            {groups.map((g) => (
+                <GroupRow
+                    key={g.key}
+                    group={g}
+                    level={0}
+                    depth={depth}
+                    isExpanded={isExpanded}
+                    onToggle={onToggle}
+                />
+            ))}
         </div>
     );
 
 }
 
-export function GroupPane(props: GroupPaneProps) {
+interface GroupRowProps {
+    group: PreferenceGroup;
+    level: number;
+    depth: number;
+    isExpanded: (key: PropertyKey) => boolean;
+    onToggle: (key: PropertyKey) => void;
+}
 
-    const { nodes, depth } = props;
-    const groups = useMemo(() => filterTree(nodes, depth), [nodes, depth]);
+function GroupRow(props: GroupRowProps) {
+
+    const { group, level, depth, isExpanded, onToggle } = props;
+
+    const expanded = isExpanded(group.key);
+    const hasExpandableChildren =
+        level < depth &&
+        group.children.some((c) => c.kind === 'group');
 
     return (
         <div>
-            {groups.map((g) => (
-                <GroupRow key={g.key} group={g} level={0} />
-            ))}
+
+            <button
+                type="button"
+                onClick={() => onToggle(group.key)}
+                aria-expanded={expanded}
+                disabled={!hasExpandableChildren}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    background: 'none',
+                    border: 'none',
+                    paddingTop: '0.125rem',
+                    paddingBottom: '0.125rem',
+                    paddingRight: 0,
+                    paddingLeft: `${level * 0.75}rem`,
+                    cursor: hasExpandableChildren ? 'pointer' : 'default',
+                    width: '100%',
+                    textAlign: 'left'
+                }}
+            >
+                <span style={{ width: '1ch', display: 'inline-block' }}>
+                    {hasExpandableChildren ? (expanded ? '▼' : '▶') : ''}
+                </span>
+                {group.title}
+            </button>
+
+            {expanded && level < depth && group.children.map((g) =>
+                g.kind === 'group'
+                    ? <GroupRow
+                        key={g.key}
+                        group={g}
+                        level={level + 1}
+                        depth={depth}
+                        isExpanded={isExpanded}
+                        onToggle={onToggle}
+                    />
+                    : null
+            )}
+
         </div>
     );
 

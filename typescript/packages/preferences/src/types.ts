@@ -1,27 +1,23 @@
-import type {
-    PreferenceMessages,
-    PreferenceProperty,
-    PreferencePropertyItem,
-    PreferenceValues
-} from './generated/index.js';
+import type { Messages } from './generated/messages';
+import type { Property, PropertyItem } from './generated/property';
+import type { Values } from './generated/values';
 
 
-// Spec vocabulary aliases over the JSON-Schema-generated names.
+// Re-export the generated spec types so this module is the single source
+// of truth for consumers.
 
-export type Property = PreferenceProperty;
-export type PropertyItem = PreferencePropertyItem;
-export type Messages = PreferenceMessages;
-export type Values = PreferenceValues;
+export type { Messages, Property, PropertyItem, Values };
+
 
 export type Scope = string;
+
 export type PropertyKey = string;
 export type MessageKey = string;
 
 export type Schema = Record<PropertyKey, Property>;
-
 export type Preferences = Record<PropertyKey, unknown>;
 
-// Hierarchical display nodes (see Hierarchical Display Expectations).
+// Hierarchical display nodes.
 
 export interface PreferenceGroup {
 
@@ -48,7 +44,7 @@ export interface PreferenceLeaf {
 export type PreferenceNode = PreferenceGroup | PreferenceLeaf;
 export type PreferenceTree = PreferenceNode[];
 
-// Editor-time per-property resolution detail (used by `resolveAtScope`).
+// Editor-time per-property resolution detail.
 
 export interface PreferenceState {
 
@@ -58,7 +54,7 @@ export interface PreferenceState {
     isOverridden: boolean;
 
     inheritedValue: unknown;
-    inheritedScope: Scope | null;
+    inheritedScope: Scope;
 
     defaultValue: unknown;
     defaultScope: Scope;
@@ -67,9 +63,12 @@ export interface PreferenceState {
 
 // Diagnostics produced by validation and resolution.
 
-export interface Issue {
+export type DiagnosticSeverity = 'error' | 'warning';
+
+export interface Diagnostic {
 
     code: string;
+    severity: DiagnosticSeverity;
     message: string;
 
     scope?: Scope;
@@ -77,5 +76,3 @@ export interface Issue {
     path?: ReadonlyArray<string | number>;
 
 }
-
-export type Warning = Issue;

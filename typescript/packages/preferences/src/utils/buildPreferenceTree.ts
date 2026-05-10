@@ -1,70 +1,85 @@
-import type {
-    Messages,
-    PreferenceGroup,
-    PreferenceLeaf,
-    PreferenceNode,
-    PreferenceTree,
-    Property,
-    Schema,
-    Scope,
-    Warning
-} from '../types.js';
-import { IssueCode, warning } from './issues.js';
-import { createTranslator, type Translator, type TranslatorOptions } from './translate.js';
+import type { Diagnostic, Messages, PreferenceGroup, PreferenceLeaf, PreferenceNode, PreferenceTree, Property, Schema, Scope } from '../types';
+import { DiagnosticCode, warning } from './diagnostics';
+import type { PropertyFilter } from './filter';
+import { localizeSchema } from './localize';
+import { createTranslator, type Translator, type TranslatorOptions } from './translator';
 
 
-export interface StratifyOptions extends TranslatorOptions {
+export interface BuildPreferenceTreeOptions extends TranslatorOptions {
 
     // When set, only properties visible at this scope are included
     // (owning scope, plus downstream scopes for `overridable: true`
     // properties). When omitted, every property is emitted.
     scope?: Scope;
 
-    // Required when `scope` is set. The host's ordered list of scopes.
+    // Required when `scope` is set. The host's ordered list of
+    // scopes.
     scopes?: ReadonlyArray<Scope>;
 
+    // Optional predicate run after localization. Properties for
+    // which this returns `false` are dropped before group nodes are
+    // derived, so empty groups disappear automatically.
+    filter?: PropertyFilter;
+
 }
 
-
-export interface StratifyResult {
+export interface BuildPreferenceTreeResult {
 
     tree: PreferenceTree;
-    warnings: Warning[];
+    diagnostics: Diagnostic[];
 
 }
 
-
-// Build the hierarchical display tree. Group nodes are derived from the
-// period-delimited prefixes of property keys; leaf nodes correspond to
-// each property. Labels are resolved through `createTranslator` against
-// the supplied `messages` bag.
-
-export function stratify(
+/**
+ * Build the hierarchical display tree.
+ *
+ * The input schema is first localized in-full (every property's
+ * key-or-text fields interpolated against `messages`); then group
+ * nodes are derived from the period-delimited prefixes of property
+ * keys, and leaf nodes correspond to each property. Tree titles for
+ * keys are looked up through the same translator.
+ *
+ * @param schema - The preference schema to display.
+ * @param messages - Optional messages bag used to interpolate
+ * key-or-text fields and look up tree titles. When absent, titles
+ * fall back to `humanizeKey` and key-or-text fields pass through
+ * unchanged.
+ * @param options - Optional scope filter and translator options
+ * (`onMissing`).
+ * @returns The localized tree and any diagnostics produced while
+ * building it.
+ */
+export function buildPreferenceTree(
     schema: Schema,
     messages: Messages | undefined,
-    options: StratifyOptions = {}
-): StratifyResult {
+    options: BuildPreferenceTreeOptions = {}
+): BuildPreferenceTreeResult {
 
-    const { scope, scopes, ...translatorOptions } = options;
+    const { scope, scopes, filter, ...translatorOptions } = options;
 
-    const t = createTranslator(messages, translatorOptions);
+    const translator = createTranslator(messages, translatorOptions);
     const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
 
-    const warnings: Warning[] = [];
+    const localizedSchema = localizeSchema(schema, translator);
+
+    const diagnostics: Diagnostic[] = [];
     const visibility = createVisibility(scope, scopes);
 
     const root: MutableGroup = createMutableGroup('', '');
 
-    for (const [key, property] of Object.entries(schema)) {
+    for (const [key, property] of Object.entries(localizedSchema)) {
 
         if (!visibility.includes(property)) {
+            continue;
+        }
+        if (filter && !filter(key, property)) {
             continue;
         }
 
         const segments = key.split('.').filter(Boolean);
         if (segments.length < 2) {
-            warnings.push(warning({
-                code: IssueCode.PROPERTY_KEY_TOO_SHORT,
+            diagnostics.push(warning({
+                code: DiagnosticCode.PROPERTY_KEY_TOO_SHORT,
                 key,
                 message: `Property key "${key}" must contain at least two period-delimited segments.`
             }));
@@ -72,13 +87,13 @@ export function stratify(
         }
 
         const groupSegments = segments.slice(0, -1);
-        const groupPath = ensureGroupPath(root, groupSegments, t);
+        const groupPath = ensureGroupPath(root, groupSegments, translator);
 
         const parent = groupPath[groupPath.length - 1] ?? root;
         const leaf: PreferenceLeaf = {
             kind: 'leaf',
             key,
-            title: t.label(key),
+            title: translator.lookup(key),
             property
         };
 
@@ -91,7 +106,7 @@ export function stratify(
     }
 
     const tree = materializeChildren(root, collator);
-    return { tree, warnings };
+    return { tree, diagnostics };
 
 }
 
@@ -109,7 +124,6 @@ interface MutableGroup {
 
 }
 
-
 function createMutableGroup(key: string, title: string): MutableGroup {
     return {
         key,
@@ -120,11 +134,10 @@ function createMutableGroup(key: string, title: string): MutableGroup {
     };
 }
 
-
 function ensureGroupPath(
     root: MutableGroup,
     segments: ReadonlyArray<string>,
-    t: Translator
+    translator: Translator
 ): MutableGroup[] {
 
     let cursor = root;
@@ -135,7 +148,7 @@ function ensureGroupPath(
         segmentPath = segmentPath ? `${segmentPath}.${segment}` : segment;
         let next = cursor.groups.get(segmentPath);
         if (!next) {
-            next = createMutableGroup(segmentPath, t.label(segmentPath));
+            next = createMutableGroup(segmentPath, translator.lookup(segmentPath));
             cursor.groups.set(segmentPath, next);
         }
         path.push(next);
@@ -145,7 +158,6 @@ function ensureGroupPath(
     return path;
 
 }
-
 
 function materializeChildren(
     group: MutableGroup,
@@ -183,16 +195,13 @@ function materializeChildren(
 
 }
 
-
 function readOrder(property: Property): number {
     return typeof property.order === 'number' ? property.order : Number.POSITIVE_INFINITY;
 }
 
-
 interface Visibility {
     includes(property: Property): boolean;
 }
-
 
 function createVisibility(scope: Scope | undefined, scopes: ReadonlyArray<Scope> | undefined): Visibility {
 

@@ -8,7 +8,7 @@
 /**
  * Per-scope value assignments. Outer keys are scope names; inner keys are property keys. See docs/specification.md (Values and Preferences). Per-property type and constraint checks are performed against the composed Schema, not by this file.
  */
-export interface PreferenceValues {
+export interface Values {
   [k: string]: {
     [k: string]: unknown;
   };

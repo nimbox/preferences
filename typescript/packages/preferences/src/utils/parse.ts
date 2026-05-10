@@ -1,4 +1,4 @@
-import type { Property, PropertyItem } from '../types.js';
+import type { Property, PropertyItem } from '../types';
 
 
 export interface ParseIssue {

@@ -1,6 +1,6 @@
 import type { PreferenceNode } from '@nimbox/preferences';
 import { Fragment } from 'react';
-import type { UseEditorResult } from '../../hooks/useEditor';
+import type { UsePreferenceEditorResult } from '../../hooks/usePreferenceEditor';
 import { EditorItem } from './EditorItem';
 
 
@@ -8,9 +8,9 @@ export interface EditorPaneProps {
     scope: string;
     nodes: PreferenceNode[];
     depth: number;
-    register: UseEditorResult['register'];
-    state: UseEditorResult['state'];
-    drafts: UseEditorResult['drafts'];
+    register: UsePreferenceEditorResult['register'];
+    state: UsePreferenceEditorResult['state'];
+    drafts: UsePreferenceEditorResult['drafts'];
 }
 
 function Heading(props: {
@@ -31,9 +31,9 @@ function EditorTree(props: {
     scope: string;
     depth: number;
     breadcrumbs: string[];
-    register: UseEditorResult['register'];
-    state: UseEditorResult['state'];
-    drafts: UseEditorResult['drafts'];
+    register: UsePreferenceEditorResult['register'];
+    state: UsePreferenceEditorResult['state'];
+    drafts: UsePreferenceEditorResult['drafts'];
 }) {
 
     const { nodes, level, scope, depth, breadcrumbs, register, state, drafts } = props;

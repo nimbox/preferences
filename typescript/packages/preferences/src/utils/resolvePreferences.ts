@@ -1,14 +1,13 @@
-import type { Preferences, Schema, Scope, Values, Warning } from '../types.js';
-import { IssueCode, warning } from './issues.js';
+import type { Diagnostic, Preferences, Schema, Scope, Values } from '../types';
+import { DiagnosticCode, warning } from './diagnostics';
 
 
 export interface ResolvePreferencesResult {
 
     preferences: Preferences;
-    warnings: Warning[];
+    diagnostics: Diagnostic[];
 
 }
-
 
 export function resolvePreferences(
     scopes: ReadonlyArray<Scope>,
@@ -16,7 +15,7 @@ export function resolvePreferences(
     values: Values
 ): ResolvePreferencesResult {
 
-    const warnings: Warning[] = [];
+    const diagnostics: Diagnostic[] = [];
     const preferences: Preferences = {};
 
     const knownKeys = new Set(Object.keys(schema));
@@ -28,8 +27,8 @@ export function resolvePreferences(
         }
         for (const key of Object.keys(scopeValues)) {
             if (!knownKeys.has(key)) {
-                warnings.push(warning({
-                    code: IssueCode.UNKNOWN_PROPERTY_KEY,
+                diagnostics.push(warning({
+                    code: DiagnosticCode.UNKNOWN_PROPERTY_KEY,
                     scope,
                     key,
                     message: `Unknown property key "${key}" in scope "${scope}".`
@@ -42,8 +41,8 @@ export function resolvePreferences(
 
         const propertyScopeIndex = scopes.indexOf(property.scope);
         if (propertyScopeIndex === -1) {
-            warnings.push(warning({
-                code: IssueCode.UNKNOWN_PROPERTY_SCOPE,
+            diagnostics.push(warning({
+                code: DiagnosticCode.UNKNOWN_PROPERTY_SCOPE,
                 key,
                 scope: property.scope,
                 message: `Property "${key}" declares unknown scope "${property.scope}".`
@@ -55,8 +54,8 @@ export function resolvePreferences(
             const upstreamScope = scopes[index];
             if (upstreamScope === undefined) continue;
             if (isPresent(values, upstreamScope, key)) {
-                warnings.push(warning({
-                    code: IssueCode.UPSTREAM_VALUE_IGNORED,
+                diagnostics.push(warning({
+                    code: DiagnosticCode.UPSTREAM_VALUE_IGNORED,
                     key,
                     scope: upstreamScope,
                     message: `Value for "${key}" at scope "${upstreamScope}" is ignored: it precedes the property scope "${property.scope}".`
@@ -81,8 +80,8 @@ export function resolvePreferences(
                 const downstreamScope = scopes[index];
                 if (downstreamScope === undefined) continue;
                 if (isPresent(values, downstreamScope, key)) {
-                    warnings.push(warning({
-                        code: IssueCode.NON_OVERRIDABLE_OVERRIDE,
+                    diagnostics.push(warning({
+                        code: DiagnosticCode.NON_OVERRIDABLE_OVERRIDE,
                         key,
                         scope: downstreamScope,
                         message: `Value for non-overridable "${key}" at scope "${downstreamScope}" is ignored: locked at "${property.scope}".`
@@ -97,7 +96,7 @@ export function resolvePreferences(
 
     }
 
-    return { preferences, warnings };
+    return { preferences, diagnostics };
 
 }
 
