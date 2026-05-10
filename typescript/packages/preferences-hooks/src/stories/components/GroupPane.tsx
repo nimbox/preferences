@@ -1,15 +1,20 @@
 import type { PreferenceGroup, PreferenceNode, PropertyKey } from '@nimbox/preferences';
+import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
+import './styles.css';
 
 
 export interface GroupPaneProps {
     nodes: PreferenceNode[];
     depth: number;
+    activeSectionKey: PropertyKey | null;
+    onSectionSelect: (key: PropertyKey) => void;
 }
+
 
 export function GroupPane(props: GroupPaneProps) {
 
-    const { nodes, depth } = props;
+    const { nodes, depth, activeSectionKey, onSectionSelect } = props;
 
     const groups = useMemo(
         () => nodes.filter((n): n is PreferenceGroup => n.kind === 'group'),
@@ -36,7 +41,7 @@ export function GroupPane(props: GroupPaneProps) {
     }, []);
 
     return (
-        <div>
+        <div className="group-pane">
             {groups.map((g) => (
                 <GroupRow
                     key={g.key}
@@ -45,6 +50,8 @@ export function GroupPane(props: GroupPaneProps) {
                     depth={depth}
                     isExpanded={isExpanded}
                     onToggle={onToggle}
+                    activeSectionKey={activeSectionKey}
+                    onSectionSelect={onSectionSelect}
                 />
             ))}
         </div>
@@ -52,62 +59,77 @@ export function GroupPane(props: GroupPaneProps) {
 
 }
 
+
 interface GroupRowProps {
     group: PreferenceGroup;
     level: number;
     depth: number;
     isExpanded: (key: PropertyKey) => boolean;
     onToggle: (key: PropertyKey) => void;
+    activeSectionKey: PropertyKey | null;
+    onSectionSelect: (key: PropertyKey) => void;
 }
+
 
 function GroupRow(props: GroupRowProps) {
 
-    const { group, level, depth, isExpanded, onToggle } = props;
+    const { group, level, depth, isExpanded, onToggle, activeSectionKey, onSectionSelect } = props;
 
     const expanded = isExpanded(group.key);
     const hasExpandableChildren =
         level < depth &&
         group.children.some((c) => c.kind === 'group');
 
+    const isActive = activeSectionKey === group.key;
+
     return (
         <div>
-
-            <button
-                type="button"
-                onClick={() => onToggle(group.key)}
-                aria-expanded={expanded}
-                disabled={!hasExpandableChildren}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    background: 'none',
-                    border: 'none',
-                    paddingTop: '0.125rem',
-                    paddingBottom: '0.125rem',
-                    paddingRight: 0,
-                    paddingLeft: `${level * 0.75}rem`,
-                    cursor: hasExpandableChildren ? 'pointer' : 'default',
-                    width: '100%',
-                    textAlign: 'left'
-                }}
+            <div
+                className={classNames('group-pane__row', {
+                    'group-pane__row--active': isActive
+                })}
+                style={{ paddingLeft: `${level * 0.75}rem` }}
             >
-                <span style={{ width: '1ch', display: 'inline-block' }}>
-                    {hasExpandableChildren ? (expanded ? '▼' : '▶') : ''}
-                </span>
-                {group.title}
-            </button>
+                <div className="group-pane__rowInner">
+                    {hasExpandableChildren
+                        ? (
+                            <button
+                                type="button"
+                                className="group-pane__chevron"
+                                onClick={() => onToggle(group.key)}
+                                aria-expanded={expanded}
+                                aria-label={expanded ? 'Collapse group' : 'Expand group'}
+                            >
+                                {expanded ? '▼' : '▶'}
+                            </button>
+                        )
+                        : (
+                            <span className="group-pane__chevronPlaceholder" aria-hidden />
+                        )}
+                    <button
+                        type="button"
+                        className="group-pane__title"
+                        onClick={() => onSectionSelect(group.key)}
+                    >
+                        {group.title}
+                    </button>
+                </div>
+            </div>
 
             {expanded && level < depth && group.children.map((g) =>
                 g.kind === 'group'
-                    ? <GroupRow
-                        key={g.key}
-                        group={g}
-                        level={level + 1}
-                        depth={depth}
-                        isExpanded={isExpanded}
-                        onToggle={onToggle}
-                    />
+                    ? (
+                        <GroupRow
+                            key={g.key}
+                            group={g}
+                            level={level + 1}
+                            depth={depth}
+                            isExpanded={isExpanded}
+                            onToggle={onToggle}
+                            activeSectionKey={activeSectionKey}
+                            onSectionSelect={onSectionSelect}
+                        />
+                    )
                     : null
             )}
 

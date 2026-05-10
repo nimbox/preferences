@@ -1,12 +1,14 @@
 import { createPropertyFilter, type Messages, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import messagesEnFixture from '../../../../../fixtures/messages.en.json';
 import schemaFixture from '../../../../../fixtures/schema.json';
 import scopesFixture from '../../../../../fixtures/scopes.json';
 import valuesFixture from '../../../../../fixtures/values.json';
 import { usePreferenceEditor } from '../hooks/usePreferenceEditor';
 import { usePreferenceTree } from '../hooks/usePreferenceTree';
+import { useSectionNavigationSync } from '../hooks/useSectionNavigationSync';
+import { collectVisibleGroupKeys } from './collectVisibleGroupKeys';
 import { EditorPane } from './components/EditorPane';
 import { GroupPane } from './components/GroupPane';
 import { SelectScope } from './components/SelectScope';
@@ -72,6 +74,26 @@ const meta = {
             }
         });
 
+        const editorScrollRef = useRef<HTMLDivElement | null>(null);
+        const sectionIds = useMemo(
+            () => collectVisibleGroupKeys(tree, args.depth).map((key) => String(key)),
+            [tree, args.depth]
+        );
+
+        const {
+            activeSectionId,
+            registerSection,
+            scrollToSection,
+            releaseForcedActiveSection
+        } = useSectionNavigationSync({
+            containerRef: editorScrollRef,
+            sectionIds
+        });
+
+        const onSectionSelect = useCallback((key: PropertyKey) => {
+            void scrollToSection(String(key), { behavior: 'smooth' });
+        }, [scrollToSection]);
+
         return (
             <div style={{ display: 'flex', flexDirection: 'column', width: '75%', height: '100vh', marginLeft: 'auto', marginRight: 'auto' }}>
 
@@ -89,10 +111,16 @@ const meta = {
                         <GroupPane
                             nodes={tree}
                             depth={args.depth}
+                            activeSectionKey={activeSectionId}
+                            onSectionSelect={onSectionSelect}
                         />
                     </div>
 
-                    <div style={{ flex: 1, minWidth: 0, padding: '0 1rem', overflow: 'auto' }}>
+                    <div
+                        ref={editorScrollRef}
+                        style={{ flex: 1, minWidth: 0, padding: '0 1rem', overflow: 'auto' }}
+                        onScroll={releaseForcedActiveSection}
+                    >
                         <EditorPane
                             key={scope}
                             nodes={tree}
@@ -103,6 +131,7 @@ const meta = {
                             clear={editor.clear}
                             state={editor.state}
                             errors={editor.errors}
+                            registerSection={registerSection}
                         />
                     </div>
 

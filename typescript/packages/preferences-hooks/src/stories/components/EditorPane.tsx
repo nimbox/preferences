@@ -14,6 +14,7 @@ export interface EditorPaneProps {
     clear: UsePreferenceEditorResult['clear'];
     state: UsePreferenceEditorResult['state'];
     errors: UsePreferenceEditorResult['errors'];
+    registerSection?: (sectionId: string, element: HTMLElement | null) => void;
 }
 
 function Heading(props: {
@@ -39,9 +40,10 @@ function EditorTree(props: {
     clear: UsePreferenceEditorResult['clear'];
     state: UsePreferenceEditorResult['state'];
     errors: UsePreferenceEditorResult['errors'];
+    registerSection?: (sectionId: string, element: HTMLElement | null) => void;
 }) {
 
-    const { nodes, level, scope, depth, breadcrumbs, register, setValue, clear, state, errors } = props;
+    const { nodes, level, scope, depth, breadcrumbs, register, setValue, clear, state, errors, registerSection } = props;
 
     return (
         <>
@@ -49,8 +51,9 @@ function EditorTree(props: {
 
                 if (node.kind === 'group') {
                     if (level <= depth) {
-                        return (
-                            <Fragment key={node.key}>
+                        const sectionId = String(node.key);
+                        const subtree = (
+                            <>
                                 <Heading level={level}>{node.title}</Heading>
                                 <EditorTree
                                     nodes={node.children}
@@ -63,7 +66,26 @@ function EditorTree(props: {
                                     clear={clear}
                                     state={state}
                                     errors={errors}
+                                    registerSection={registerSection}
                                 />
+                            </>
+                        );
+                        if (registerSection) {
+                            return (
+                                <div
+                                    key={node.key}
+                                    className="editor-pane__section"
+                                    ref={(el) => {
+                                        registerSection(sectionId, el);
+                                    }}
+                                >
+                                    {subtree}
+                                </div>
+                            );
+                        }
+                        return (
+                            <Fragment key={node.key}>
+                                {subtree}
                             </Fragment>
                         );
                     }
@@ -80,6 +102,7 @@ function EditorTree(props: {
                             clear={clear}
                             state={state}
                             errors={errors}
+                            registerSection={registerSection}
                         />
                     );
                 }
@@ -104,7 +127,7 @@ function EditorTree(props: {
 
 export function EditorPane(props: EditorPaneProps) {
 
-    const { nodes, scope, depth, register, setValue, clear, state, errors } = props;
+    const { nodes, scope, depth, register, setValue, clear, state, errors, registerSection } = props;
 
     return (
         <div className="editor-pane">
@@ -119,6 +142,7 @@ export function EditorPane(props: EditorPaneProps) {
                 clear={clear}
                 state={state}
                 errors={errors}
+                registerSection={registerSection}
             />
         </div>
     );
