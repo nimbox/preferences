@@ -50,7 +50,10 @@ export interface UsePreferenceEditorResult {
 
     register: (key: PropertyKey, options?: UsePreferenceEditorRegisterOptions) => UsePreferenceEditorRegisterResult;
     setValue: (key: PropertyKey, value: unknown) => void;
+    /** Clears the error entry for this key (parse/commit state only). */
     reset: (key: PropertyKey) => void;
+    /** Removes the value at the current scope by calling `onChange(scope, key, null)` (no parse step). */
+    clear: (key: PropertyKey) => void;
 
 }
 
@@ -137,13 +140,30 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
         setErrors((current) => clearErrorEntry(current, configRef.current.scope, key));
     }, []);
 
+    const clear = useCallback((key: PropertyKey) => {
+        void (async () => {
+            const cfg = configRef.current;
+            try {
+                await cfg.onChange(cfg.scope, key, null);
+                setErrors((current) => clearErrorEntry(current, cfg.scope, key));
+            } catch (error) {
+                setErrors((current) => setErrorEntry(current, cfg.scope, key, {
+                    kind: 'commit',
+                    message: error instanceof Error ? error.message : 'Failed to clear preference',
+                    rawValue: 'null'
+                }));
+            }
+        })();
+    }, []);
+
     return {
         state,
         diagnostics,
         errors,
         register,
         setValue,
-        reset
+        reset,
+        clear
     };
 
 }

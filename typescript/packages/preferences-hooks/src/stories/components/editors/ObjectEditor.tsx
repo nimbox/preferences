@@ -4,11 +4,11 @@ import { ObjectInput } from './inputs/ObjectInput';
 
 export function ObjectEditor(props: EditorItemProps) {
 
-    const { item, breadcrumbs, register, error } = props;
+    const { register, setValue: _setValue, ...layout } = props;
 
     return (
-        <EditorItemLayout item={item} breadcrumbs={breadcrumbs} error={error}>
-            <ObjectInput name={item.key} register={register} />
+        <EditorItemLayout {...layout}>
+            <ObjectInput name={layout.item.key} register={register} />
         </EditorItemLayout>
     );
 

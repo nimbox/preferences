@@ -93,7 +93,8 @@ function defaultElement(itemType: ScalarConstraints['type']): unknown {
 
 export function ArrayEditor(props: EditorItemProps) {
 
-    const { item, breadcrumbs, setValue, error } = props;
+    const { register, setValue, ...layout } = props;
+    const { item } = layout;
 
     const property = item.property as unknown as { items?: ScalarConstraints };
     const itemConstraints = property.items ?? { type: 'any' as const } as ScalarConstraints;
@@ -108,6 +109,17 @@ export function ArrayEditor(props: EditorItemProps) {
     const initialItems = useInitialItems(item.key, props);
     const [items, setItems] = useState<unknown[]>(initialItems);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+    const valueSnapshot = JSON.stringify(layout.preferenceState?.value ?? null);
+    useEffect(() => {
+        try {
+            const parsed: unknown = valueSnapshot === 'null' ? null : JSON.parse(valueSnapshot);
+            setItems(Array.isArray(parsed) ? [...parsed] : []);
+        } catch {
+            setItems([]);
+        }
+        setEditingIndex(null);
+    }, [valueSnapshot, item.key]);
 
     const inputContainerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
@@ -192,7 +204,7 @@ export function ArrayEditor(props: EditorItemProps) {
     };
 
     return (
-        <EditorItemLayout item={item} breadcrumbs={breadcrumbs} error={error}>
+        <EditorItemLayout {...layout}>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {items.map((value, index) => {
 

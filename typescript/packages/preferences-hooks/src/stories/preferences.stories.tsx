@@ -94,6 +94,8 @@ const meta = {
                             depth={args.depth}
                             register={editor.register}
                             setValue={editor.setValue}
+                            clear={editor.clear}
+                            state={editor.state}
                             errors={editor.errors}
                         />
                     </div>

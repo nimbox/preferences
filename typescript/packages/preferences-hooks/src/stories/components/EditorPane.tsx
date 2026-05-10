@@ -2,6 +2,7 @@ import type { PreferenceNode } from '@nimbox/preferences';
 import { Fragment } from 'react';
 import type { UsePreferenceEditorResult } from '../../hooks/usePreferenceEditor';
 import { EditorItem } from './EditorItem';
+import './styles.css';
 
 
 export interface EditorPaneProps {
@@ -10,6 +11,8 @@ export interface EditorPaneProps {
     depth: number;
     register: UsePreferenceEditorResult['register'];
     setValue: UsePreferenceEditorResult['setValue'];
+    clear: UsePreferenceEditorResult['clear'];
+    state: UsePreferenceEditorResult['state'];
     errors: UsePreferenceEditorResult['errors'];
 }
 
@@ -33,10 +36,12 @@ function EditorTree(props: {
     breadcrumbs: string[];
     register: UsePreferenceEditorResult['register'];
     setValue: UsePreferenceEditorResult['setValue'];
+    clear: UsePreferenceEditorResult['clear'];
+    state: UsePreferenceEditorResult['state'];
     errors: UsePreferenceEditorResult['errors'];
 }) {
 
-    const { nodes, level, scope, depth, breadcrumbs, register, setValue, errors } = props;
+    const { nodes, level, scope, depth, breadcrumbs, register, setValue, clear, state, errors } = props;
 
     return (
         <>
@@ -55,6 +60,8 @@ function EditorTree(props: {
                                     breadcrumbs={breadcrumbs}
                                     register={register}
                                     setValue={setValue}
+                                    clear={clear}
+                                    state={state}
                                     errors={errors}
                                 />
                             </Fragment>
@@ -70,6 +77,8 @@ function EditorTree(props: {
                             breadcrumbs={[...breadcrumbs, node.title]}
                             register={register}
                             setValue={setValue}
+                            clear={clear}
+                            state={state}
                             errors={errors}
                         />
                     );
@@ -82,6 +91,8 @@ function EditorTree(props: {
                         breadcrumbs={breadcrumbs}
                         register={register}
                         setValue={setValue}
+                        clear={clear}
+                        preferenceState={state[node.key]}
                         error={errors[scope]?.[node.key]}
                     />
                 );
@@ -93,10 +104,10 @@ function EditorTree(props: {
 
 export function EditorPane(props: EditorPaneProps) {
 
-    const { nodes, scope, depth, register, setValue, errors } = props;
+    const { nodes, scope, depth, register, setValue, clear, state, errors } = props;
 
     return (
-        <div>
+        <div className="editor-pane">
             <EditorTree
                 nodes={nodes}
                 level={0}
@@ -105,6 +116,8 @@ export function EditorPane(props: EditorPaneProps) {
                 breadcrumbs={[]}
                 register={register}
                 setValue={setValue}
+                clear={clear}
+                state={state}
                 errors={errors}
             />
         </div>

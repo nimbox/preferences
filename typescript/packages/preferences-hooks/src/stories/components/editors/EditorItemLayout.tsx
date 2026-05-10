@@ -1,4 +1,5 @@
-import type { PreferenceLeaf } from '@nimbox/preferences';
+import type { PreferenceLeaf, PreferenceState } from '@nimbox/preferences';
+import classNames from 'classnames';
 import type { CSSProperties, ReactNode } from 'react';
 import type { EditorError, UsePreferenceEditorResult } from '../../../hooks/usePreferenceEditor';
 import '../styles.css';
@@ -17,6 +18,19 @@ const inlineLabelStyle: CSSProperties = {
     cursor: 'pointer'
 };
 
+const headerRowStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '0.5rem'
+};
+
+const titleBlockStyle: CSSProperties = {
+    fontWeight: 'bold',
+    flex: 1,
+    minWidth: 0
+};
+
 
 export type EditorItemLayoutVariant = 'default' | 'inline';
 
@@ -28,34 +42,52 @@ export interface EditorItemProps {
 
     register: UsePreferenceEditorResult['register'];
     setValue: UsePreferenceEditorResult['setValue'];
+    clear: UsePreferenceEditorResult['clear'];
+
+    preferenceState: PreferenceState | undefined;
 
     error: EditorError | undefined;
 
 }
 
 
-export interface EditorItemLayoutProps {
+export type EditorItemLayoutProps =
+    Pick<EditorItemProps, 'item' | 'breadcrumbs' | 'error' | 'clear' | 'preferenceState'> & {
 
-    item: PreferenceLeaf;
-    breadcrumbs: string[];
+        children: ReactNode;
 
-    error: EditorError | undefined;
+        variant?: EditorItemLayoutVariant;
 
-    children: ReactNode;
-
-    variant?: EditorItemLayoutVariant;
-
-}
+    };
 
 
 export function EditorItemLayout(props: EditorItemLayoutProps) {
 
-    const { item, breadcrumbs, error, children, variant = 'default' } = props;
+    const { item, breadcrumbs, error, children, variant = 'default', clear, preferenceState } = props;
 
-    const title = (
-        <div style={{ fontWeight: 'bold' }}>
-            {breadcrumbs.length > 0 && (<span>{breadcrumbs.join(' » ')}{' » '}</span>)}
-            {item.title}
+    const isDefined = Boolean(preferenceState?.isDefined);
+    const showClear = isDefined;
+    const itemClassName = classNames('editor-item', {
+        'editor-item--defined': isDefined
+    });
+
+    const headerRow = (
+        <div style={headerRowStyle}>
+            <div style={titleBlockStyle}>
+                {breadcrumbs.length > 0 && (<span>{breadcrumbs.join(' » ')}{' » '}</span>)}
+                {item.title}
+            </div>
+            <button
+                type="button"
+                className={classNames('editor-item__clear', {
+                    'editor-item__clear--hidden': !showClear
+                })}
+                disabled={!showClear}
+                aria-hidden={!showClear}
+                onClick={() => clear(item.key)}
+            >
+                Clear
+            </button>
         </div>
     );
 
@@ -78,8 +110,8 @@ export function EditorItemLayout(props: EditorItemLayoutProps) {
         );
 
         return (
-            <div className="editor-item">
-                {title}
+            <div className={itemClassName}>
+                {headerRow}
                 {row}
                 {errorBlock}
             </div>
@@ -88,9 +120,9 @@ export function EditorItemLayout(props: EditorItemLayoutProps) {
     }
 
     return (
-        <div className="editor-item">
+        <div className={itemClassName}>
 
-            {title}
+            {headerRow}
 
             {item.property.description && (
                 <div>

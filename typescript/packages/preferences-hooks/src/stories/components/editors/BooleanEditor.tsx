@@ -4,11 +4,11 @@ import { BooleanInput } from './inputs/BooleanInput';
 
 export function BooleanEditor(props: EditorItemProps) {
 
-    const { item, breadcrumbs, register, error } = props;
+    const { register, setValue: _setValue, ...layout } = props;
 
     return (
-        <EditorItemLayout item={item} breadcrumbs={breadcrumbs} error={error} variant="inline">
-            <BooleanInput name={item.key} register={register} />
+        <EditorItemLayout {...layout} variant="inline">
+            <BooleanInput name={layout.item.key} register={register} />
         </EditorItemLayout>
     );
 

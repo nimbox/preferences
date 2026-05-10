@@ -10,8 +10,48 @@ body {
     padding: 0;
 }
 
+/* ~ Tailwind space-y-2: vertical rhythm between pane sections / items */
+.editor-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .editor-item {
     padding: 0.25rem;
+    /* Reserve gutter width so defined / cleared rows don’t shift horizontally */
+    border-left: 3px solid transparent;
+}
+
+/* Scoped value set at this level (cf. VS Code modified gutter line) */
+.editor-item--defined {
+    border-left-color: #007acc;
+}
+
+/* Keep header width stable; no scoped value → permanently hidden */
+.editor-item__clear {
+    flex-shrink: 0;
+}
+
+.editor-item__clear--hidden {
+    visibility: hidden;
+}
+
+/* Clear only on row hover where hover exists; touch / coarse keeps it visible */
+@media (hover: hover) {
+
+    .editor-item__clear:not(.editor-item__clear--hidden) {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 90ms ease;
+    }
+
+    .editor-item:hover .editor-item__clear:not(.editor-item__clear--hidden),
+    .editor-item:focus-within .editor-item__clear:not(.editor-item__clear--hidden) {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
 }
 
 .editor-item:hover {
