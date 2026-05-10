@@ -1,19 +1,14 @@
 import { EditorItemLayout, type EditorItemProps } from './EditorItemLayout';
+import { ObjectInput } from './inputs/ObjectInput';
 
 
 export function ObjectEditor(props: EditorItemProps) {
 
     const { item, breadcrumbs, register, error } = props;
-    const registerProps = register(item.key);
 
     return (
         <EditorItemLayout item={item} breadcrumbs={breadcrumbs} error={error}>
-            <textarea
-                rows={6}
-                spellCheck={false}
-                style={{ width: '100%', fontFamily: 'monospace' }}
-                {...registerProps}
-            />
+            <ObjectInput name={item.key} register={register} />
         </EditorItemLayout>
     );
 

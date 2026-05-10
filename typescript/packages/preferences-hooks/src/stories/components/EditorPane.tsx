@@ -9,6 +9,7 @@ export interface EditorPaneProps {
     nodes: PreferenceNode[];
     depth: number;
     register: UsePreferenceEditorResult['register'];
+    setValue: UsePreferenceEditorResult['setValue'];
     errors: UsePreferenceEditorResult['errors'];
 }
 
@@ -31,10 +32,11 @@ function EditorTree(props: {
     depth: number;
     breadcrumbs: string[];
     register: UsePreferenceEditorResult['register'];
+    setValue: UsePreferenceEditorResult['setValue'];
     errors: UsePreferenceEditorResult['errors'];
 }) {
 
-    const { nodes, level, scope, depth, breadcrumbs, register, errors } = props;
+    const { nodes, level, scope, depth, breadcrumbs, register, setValue, errors } = props;
 
     return (
         <>
@@ -52,6 +54,7 @@ function EditorTree(props: {
                                     depth={depth}
                                     breadcrumbs={breadcrumbs}
                                     register={register}
+                                    setValue={setValue}
                                     errors={errors}
                                 />
                             </Fragment>
@@ -66,6 +69,7 @@ function EditorTree(props: {
                             depth={depth}
                             breadcrumbs={[...breadcrumbs, node.title]}
                             register={register}
+                            setValue={setValue}
                             errors={errors}
                         />
                     );
@@ -77,6 +81,7 @@ function EditorTree(props: {
                         item={node}
                         breadcrumbs={breadcrumbs}
                         register={register}
+                        setValue={setValue}
                         error={errors[scope]?.[node.key]}
                     />
                 );
@@ -88,7 +93,7 @@ function EditorTree(props: {
 
 export function EditorPane(props: EditorPaneProps) {
 
-    const { nodes, scope, depth, register, errors } = props;
+    const { nodes, scope, depth, register, setValue, errors } = props;
 
     return (
         <div>
@@ -99,6 +104,7 @@ export function EditorPane(props: EditorPaneProps) {
                 depth={depth}
                 breadcrumbs={[]}
                 register={register}
+                setValue={setValue}
                 errors={errors}
             />
         </div>

@@ -9,6 +9,35 @@ import type { Values } from './generated/values';
 export type { Messages, Property, PropertyItem, Values };
 
 
+// Constraints that apply to a single scalar value. The generated
+// `ScalarConstraints` is open (no enumerated properties) because the
+// JSON Schema `$ref` mechanism doesn't preserve property lists across
+// `additionalProperties`. This precise hand-rolled shape is what the
+// runtime utilities (parse, validate, localize) operate on. Both
+// `Property` (when scalar) and `PropertyItem` are structurally
+// assignable to it.
+export interface ScalarConstraints {
+
+    type: 'boolean' | 'integer' | 'number' | 'string' | 'object' | 'any';
+
+    enum?: ReadonlyArray<unknown>;
+    enumLabels?: string[];
+    enumDescriptions?: string[];
+
+    minimum?: number;
+    maximum?: number;
+
+    minLength?: number;
+    maxLength?: number;
+
+    pattern?: string;
+    patternErrorMessage?: string;
+
+    format?: 'date' | 'time' | 'email' | 'uri' | 'ipv4';
+
+}
+
+
 export type Scope = string;
 
 export type PropertyKey = string;

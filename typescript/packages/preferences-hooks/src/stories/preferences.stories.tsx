@@ -93,6 +93,7 @@ const meta = {
                             scope={scope}
                             depth={args.depth}
                             register={editor.register}
+                            setValue={editor.setValue}
                             errors={editor.errors}
                         />
                     </div>

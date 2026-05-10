@@ -1,5 +1,6 @@
-import type { Diagnostic, Property, Schema } from '../types';
+import type { Diagnostic, Property, PropertyItem, ScalarConstraints, Schema } from '../types';
 import { DiagnosticCode, error } from './diagnostics';
+import { checkScalarValue } from './parse';
 
 
 const PROPERTY_TYPES = new Set([
@@ -64,6 +65,8 @@ export function validateProperty(key: string, property: Property): Diagnostic[] 
                 key,
                 message: `Property "${key}" has invalid \`items.type\` "${String(items.type)}".`
             }));
+        } else {
+            validateScalarConstraints(key, items as unknown as ScalarConstraints, ['items'], errors);
         }
     } else if (property.items !== undefined) {
         errors.push(error({
@@ -117,8 +120,23 @@ export function validateProperty(key: string, property: Property): Diagnostic[] 
         }));
     }
 
-    validateEnumShape(key, property, errors);
-    validateConstraintConsistency(key, property, errors);
+    if (typeof propertyType === 'string' && propertyType !== 'array') {
+        validateScalarConstraints(key, property as ScalarConstraints, [], errors);
+    } else if (propertyType === 'array') {
+        // Property root cannot itself carry scalar constraints when
+        // the root type is `array`. Element constraints belong on
+        // `items`. Surface a diagnostic if any leaked through.
+        rejectMisplacedScalarConstraints(key, property, errors);
+    }
+
+    if (typeof property.minItems === 'number' && typeof property.maxItems === 'number'
+        && property.minItems > property.maxItems) {
+        errors.push(error({
+            code: DiagnosticCode.BOUND_INVERTED,
+            key,
+            message: `Property "${key}" has \`minItems\` (${property.minItems}) > \`maxItems\` (${property.maxItems}).`
+        }));
+    }
 
     if (Object.prototype.hasOwnProperty.call(property, 'default')) {
         validateDefault(key, property, errors);
@@ -142,43 +160,66 @@ export function validateProperties(schema: Schema): Diagnostic[] {
 }
 
 
-function validateEnumShape(key: string, property: Property, errors: Diagnostic[]): void {
+/**
+ * Validate the scalar-constraint shape carried by `constraints`
+ * against the in-context `type`. Used both at the property root (for
+ * scalar properties) and on `items` (for array properties).
+ *
+ * @param key - Owning property key, for diagnostic context.
+ * @param constraints - The constraint-bearing object to validate.
+ * @param path - Diagnostic path prefix; `[]` for root-level
+ * constraints, `['items']` when called for array element
+ * constraints.
+ * @param errors - Diagnostic sink.
+ */
+function validateScalarConstraints(
+    key: string,
+    constraints: ScalarConstraints,
+    path: ReadonlyArray<string>,
+    errors: Diagnostic[]
+): void {
 
-    const propertyEnum = property.enum;
-    const labels = property.enumLabels;
-    const descriptions = property.enumDescriptions;
+    const constraintEnum = constraints.enum;
+    const labels = constraints.enumLabels;
+    const descriptions = constraints.enumDescriptions;
+    const ctxType = constraints.type;
+    const where = path.length > 0 ? path.join('.') + '.' : '';
 
-    if (propertyEnum !== undefined && !Array.isArray(propertyEnum)) {
+    if (constraintEnum !== undefined && !Array.isArray(constraintEnum)) {
         errors.push(error({
             code: DiagnosticCode.INVALID_TYPE,
             key,
-            message: `Property "${key}" \`enum\` must be an array when present.`
+            path,
+            message: `Property "${key}" \`${where}enum\` must be an array when present.`
         }));
         return;
     }
 
-    if (propertyEnum !== undefined
-        && typeof property.type === 'string'
-        && !ENUM_COMPATIBLE_TYPES.has(property.type as never)) {
+    if (constraintEnum !== undefined
+        && typeof ctxType === 'string'
+        && !ENUM_COMPATIBLE_TYPES.has(ctxType as never)) {
         errors.push(error({
             code: DiagnosticCode.ENUM_TYPE_MISMATCH,
             key,
-            message: `Property "${key}" declares \`enum\` but \`type\` "${property.type}" is not enum-compatible. Valid types: integer, string.`
+            path,
+            message: `Property "${key}" declares \`${where}enum\` but \`${where}type\` "${ctxType}" is not enum-compatible. Valid types: integer, string.`
         }));
     }
 
     if (Array.isArray(labels)) {
-        if (!Array.isArray(propertyEnum)) {
+        if (!Array.isArray(constraintEnum)) {
             errors.push(error({
                 code: DiagnosticCode.ENUM_LABELS_LENGTH_MISMATCH,
                 key,
-                message: `Property "${key}" \`enumLabels\` requires \`enum\`.`
+                path,
+                message: `Property "${key}" \`${where}enumLabels\` requires \`${where}enum\`.`
             }));
-        } else if (labels.length !== propertyEnum.length) {
+        } else if (labels.length !== constraintEnum.length) {
             errors.push(error({
                 code: DiagnosticCode.ENUM_LABELS_LENGTH_MISMATCH,
                 key,
-                message: `Property "${key}" \`enumLabels.length\` (${labels.length}) must equal \`enum.length\` (${propertyEnum.length}).`
+                path,
+                message: `Property "${key}" \`${where}enumLabels.length\` (${labels.length}) must equal \`${where}enum.length\` (${constraintEnum.length}).`
             }));
         }
         labels.forEach((label, index) => {
@@ -186,25 +227,27 @@ function validateEnumShape(key: string, property: Property, errors: Diagnostic[]
                 errors.push(error({
                     code: DiagnosticCode.EMPTY_ENUM_LABEL,
                     key,
-                    path: ['enumLabels', index],
-                    message: `Property "${key}" \`enumLabels[${index}]\` must be a non-empty string.`
+                    path: [...path, 'enumLabels', index],
+                    message: `Property "${key}" \`${where}enumLabels[${index}]\` must be a non-empty string.`
                 }));
             }
         });
     }
 
     if (Array.isArray(descriptions)) {
-        if (!Array.isArray(propertyEnum)) {
+        if (!Array.isArray(constraintEnum)) {
             errors.push(error({
                 code: DiagnosticCode.ENUM_DESCRIPTIONS_LENGTH_MISMATCH,
                 key,
-                message: `Property "${key}" \`enumDescriptions\` requires \`enum\`.`
+                path,
+                message: `Property "${key}" \`${where}enumDescriptions\` requires \`${where}enum\`.`
             }));
-        } else if (descriptions.length !== propertyEnum.length) {
+        } else if (descriptions.length !== constraintEnum.length) {
             errors.push(error({
                 code: DiagnosticCode.ENUM_DESCRIPTIONS_LENGTH_MISMATCH,
                 key,
-                message: `Property "${key}" \`enumDescriptions.length\` (${descriptions.length}) must equal \`enum.length\` (${propertyEnum.length}).`
+                path,
+                message: `Property "${key}" \`${where}enumDescriptions.length\` (${descriptions.length}) must equal \`${where}enum.length\` (${constraintEnum.length}).`
             }));
         }
         descriptions.forEach((description, index) => {
@@ -212,53 +255,71 @@ function validateEnumShape(key: string, property: Property, errors: Diagnostic[]
                 errors.push(error({
                     code: DiagnosticCode.EMPTY_ENUM_DESCRIPTION,
                     key,
-                    path: ['enumDescriptions', index],
-                    message: `Property "${key}" \`enumDescriptions[${index}]\` must be a non-empty string.`
+                    path: [...path, 'enumDescriptions', index],
+                    message: `Property "${key}" \`${where}enumDescriptions[${index}]\` must be a non-empty string.`
                 }));
             }
         });
     }
 
-}
-
-
-function validateConstraintConsistency(key: string, property: Property, errors: Diagnostic[]): void {
-
-    if (typeof property.minimum === 'number' && typeof property.maximum === 'number'
-        && property.minimum > property.maximum) {
+    if (typeof constraints.minimum === 'number' && typeof constraints.maximum === 'number'
+        && constraints.minimum > constraints.maximum) {
         errors.push(error({
             code: DiagnosticCode.BOUND_INVERTED,
             key,
-            message: `Property "${key}" has \`minimum\` (${property.minimum}) > \`maximum\` (${property.maximum}).`
+            path,
+            message: `Property "${key}" has \`${where}minimum\` (${constraints.minimum}) > \`${where}maximum\` (${constraints.maximum}).`
         }));
     }
 
-    if (typeof property.minLength === 'number' && typeof property.maxLength === 'number'
-        && property.minLength > property.maxLength) {
+    if (typeof constraints.minLength === 'number' && typeof constraints.maxLength === 'number'
+        && constraints.minLength > constraints.maxLength) {
         errors.push(error({
             code: DiagnosticCode.BOUND_INVERTED,
             key,
-            message: `Property "${key}" has \`minLength\` (${property.minLength}) > \`maxLength\` (${property.maxLength}).`
+            path,
+            message: `Property "${key}" has \`${where}minLength\` (${constraints.minLength}) > \`${where}maxLength\` (${constraints.maxLength}).`
         }));
     }
 
-    if (typeof property.minItems === 'number' && typeof property.maxItems === 'number'
-        && property.minItems > property.maxItems) {
-        errors.push(error({
-            code: DiagnosticCode.BOUND_INVERTED,
-            key,
-            message: `Property "${key}" has \`minItems\` (${property.minItems}) > \`maxItems\` (${property.maxItems}).`
-        }));
-    }
-
-    if (typeof property.pattern === 'string' && property.pattern.length > 0) {
+    if (typeof constraints.pattern === 'string' && constraints.pattern.length > 0) {
         try {
-            new RegExp(property.pattern);
+            new RegExp(constraints.pattern);
         } catch {
             errors.push(error({
                 code: DiagnosticCode.INVALID_PATTERN,
                 key,
-                message: `Property "${key}" \`pattern\` is not a valid regular expression.`
+                path,
+                message: `Property "${key}" \`${where}pattern\` is not a valid regular expression.`
+            }));
+        }
+    }
+
+}
+
+
+// When `type` is `array`, scalar-constraint fields are forbidden at
+// the property root — they belong on `items`. Emit a diagnostic if
+// any leaked through.
+function rejectMisplacedScalarConstraints(
+    key: string,
+    property: Property,
+    errors: Diagnostic[]
+): void {
+
+    const fields: Array<keyof ScalarConstraints> = [
+        'enum', 'enumLabels', 'enumDescriptions',
+        'minimum', 'maximum',
+        'minLength', 'maxLength',
+        'pattern', 'patternErrorMessage', 'format'
+    ];
+
+    for (const field of fields) {
+        if ((property as Record<string, unknown>)[field] !== undefined) {
+            errors.push(error({
+                code: DiagnosticCode.ENUM_TYPE_MISMATCH,
+                key,
+                message: `Property "${key}" of type "array" must not declare \`${field}\` at the root; declare it on \`items\` instead.`
             }));
         }
     }
@@ -280,65 +341,16 @@ function validateDefault(key: string, property: Property, errors: Diagnostic[]):
         return;
     }
 
-    if (Array.isArray(property.enum)) {
-        const matches = property.enum.some((member: unknown) => deepEqual(member, defaultValue));
-        if (!matches) {
+    if (propertyType !== 'array' && propertyType !== 'object' && propertyType !== 'any') {
+        const result = checkScalarValue(property as ScalarConstraints, defaultValue);
+        if (!result.success) {
             errors.push(error({
-                code: DiagnosticCode.ENUM_DEFAULT_MISMATCH,
+                code: result.error.issues[0]?.code === 'enum-mismatch'
+                    ? DiagnosticCode.ENUM_DEFAULT_MISMATCH
+                    : DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
                 key,
-                message: `Property "${key}" \`default\` is not a member of \`enum\`.`
+                message: `Property "${key}" \`default\` violates a scalar constraint: ${result.error.message}.`
             }));
-        }
-    }
-
-    if (propertyType === 'integer' || propertyType === 'number') {
-        const numeric = defaultValue as number;
-        if (typeof property.minimum === 'number' && numeric < property.minimum) {
-            errors.push(error({
-                code: DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
-                key,
-                message: `Property "${key}" \`default\` (${numeric}) < \`minimum\` (${property.minimum}).`
-            }));
-        }
-        if (typeof property.maximum === 'number' && numeric > property.maximum) {
-            errors.push(error({
-                code: DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
-                key,
-                message: `Property "${key}" \`default\` (${numeric}) > \`maximum\` (${property.maximum}).`
-            }));
-        }
-    }
-
-    if (propertyType === 'string') {
-        const text = defaultValue as string;
-        if (typeof property.minLength === 'number' && text.length < property.minLength) {
-            errors.push(error({
-                code: DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
-                key,
-                message: `Property "${key}" \`default\` length (${text.length}) < \`minLength\` (${property.minLength}).`
-            }));
-        }
-        if (typeof property.maxLength === 'number' && text.length > property.maxLength) {
-            errors.push(error({
-                code: DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
-                key,
-                message: `Property "${key}" \`default\` length (${text.length}) > \`maxLength\` (${property.maxLength}).`
-            }));
-        }
-        if (typeof property.pattern === 'string' && property.pattern.length > 0) {
-            let regex: RegExp | null = null;
-            try {
-                regex = new RegExp(property.pattern);
-            } catch {
-                regex = null;
-            }
-            if (regex && !regex.test(text)) {
-                errors.push(error({
-                    code: DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
-                    key,
-                    message: `Property "${key}" \`default\` does not match \`pattern\`.`
-                }));
-            }
         }
     }
 
@@ -357,15 +369,27 @@ function validateDefault(key: string, property: Property, errors: Diagnostic[]):
                 message: `Property "${key}" \`default.length\` (${defaultValue.length}) > \`maxItems\` (${property.maxItems}).`
             }));
         }
-        const itemType = property.items?.type;
-        if (typeof itemType === 'string' && itemType !== 'any') {
+        const items = property.items;
+        if (items && typeof items.type === 'string' && items.type !== 'any') {
             defaultValue.forEach((element, index) => {
-                if (!isOfDeclaredType(itemType, element)) {
+                if (!isOfDeclaredType(items.type, element)) {
                     errors.push(error({
                         code: DiagnosticCode.INVALID_DEFAULT_TYPE,
                         key,
                         path: ['default', index],
-                        message: `Property "${key}" \`default[${index}]\` does not match \`items.type\` "${itemType}".`
+                        message: `Property "${key}" \`default[${index}]\` does not match \`items.type\` "${items.type}".`
+                    }));
+                    return;
+                }
+                const result = checkScalarValue(items as unknown as ScalarConstraints, element);
+                if (!result.success) {
+                    errors.push(error({
+                        code: result.error.issues[0]?.code === 'enum-mismatch'
+                            ? DiagnosticCode.ENUM_DEFAULT_MISMATCH
+                            : DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
+                        key,
+                        path: ['default', index],
+                        message: `Property "${key}" \`default[${index}]\` violates an item constraint: ${result.error.message}.`
                     }));
                 }
             });
@@ -378,7 +402,7 @@ function validateDefault(key: string, property: Property, errors: Diagnostic[]):
 function isOfDeclaredType(
     declaredType: unknown,
     value: unknown,
-    itemType?: string
+    itemType?: PropertyItem['type']
 ): boolean {
 
     switch (declaredType) {
@@ -404,21 +428,6 @@ function isOfDeclaredType(
             return true;
         default:
             return false;
-    }
-
-}
-
-
-function deepEqual(left: unknown, right: unknown): boolean {
-
-    if (Object.is(left, right)) {
-        return true;
-    }
-
-    try {
-        return JSON.stringify(left) === JSON.stringify(right);
-    } catch {
-        return false;
     }
 
 }

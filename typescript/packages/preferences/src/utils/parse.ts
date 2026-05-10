@@ -1,4 +1,4 @@
-import type { Property, PropertyItem } from '../types';
+import type { Property, ScalarConstraints } from '../types';
 
 
 export interface ParseIssue {
@@ -51,16 +51,10 @@ export function parseSafe(property: Property, value: unknown): ParseSafeResult {
     switch (property.type) {
 
         case 'boolean':
-            return parseBoolean(value);
-
         case 'integer':
-            return parseNumeric(property, value, true);
-
         case 'number':
-            return parseNumeric(property, value, false);
-
         case 'string':
-            return parseString(property, value);
+            return parseScalar(property as ScalarConstraints, value);
 
         case 'object':
             return parseObject(value);
@@ -79,21 +73,92 @@ export function parseSafe(property: Property, value: unknown): ParseSafeResult {
 }
 
 
-function parseBoolean(value: unknown): ParseSafeResult {
+/**
+ * Coerce `value` to the type declared in `constraints`, then check
+ * the scalar constraints (enum, min/max, length, pattern). Used at
+ * event time where input values arrive as strings from the DOM.
+ *
+ * For default validation (where coercion is not desired) call
+ * `checkScalarValue` instead.
+ */
+export function parseScalar(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
 
-    if (typeof value === 'boolean') {
-        return { success: true, data: value };
+    switch (constraints.type) {
+
+        case 'boolean':
+            return parseBoolean(constraints, value);
+
+        case 'integer':
+            return parseNumeric(constraints, value, true);
+
+        case 'number':
+            return parseNumeric(constraints, value, false);
+
+        case 'string':
+            return parseString(constraints, value);
+
+        case 'object':
+            return parseObject(value);
+
+        case 'any':
+            return { success: true, data: value };
+
+        default:
+            return { success: true, data: value };
+
     }
-    if (typeof value === 'string') {
-        if (value === 'true') return { success: true, data: true };
-        if (value === 'false') return { success: true, data: false };
-    }
-    return { success: true, data: Boolean(value) };
 
 }
 
 
-function parseNumeric(property: Property, value: unknown, integer: boolean): ParseSafeResult {
+/**
+ * Constraint check that assumes `value` is already of the declared
+ * scalar type. Performs only enum/min/max/length/pattern checks; no
+ * coercion. Used by `validateDefault` after a strict type check.
+ */
+export function checkScalarValue(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+
+    switch (constraints.type) {
+
+        case 'boolean':
+            return checkEnum(constraints, value);
+
+        case 'integer':
+        case 'number':
+            return checkNumeric(constraints, value as number);
+
+        case 'string':
+            return checkString(constraints, value as string);
+
+        case 'object':
+        case 'any':
+        default:
+            return { success: true, data: value };
+
+    }
+
+}
+
+
+function parseBoolean(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+
+    let coerced: boolean;
+    if (typeof value === 'boolean') {
+        coerced = value;
+    } else if (typeof value === 'string') {
+        if (value === 'true') coerced = true;
+        else if (value === 'false') coerced = false;
+        else coerced = Boolean(value);
+    } else {
+        coerced = Boolean(value);
+    }
+
+    return checkEnum(constraints, coerced);
+
+}
+
+
+function parseNumeric(constraints: ScalarConstraints, value: unknown, integer: boolean): ParseSafeResult {
 
     const text = String(value ?? '').trim();
     if (!text) {
@@ -109,33 +174,46 @@ function parseNumeric(property: Property, value: unknown, integer: boolean): Par
         return failure('integer-invalid', value, 'validation.integer.invalid');
     }
 
-    if (typeof property.minimum === 'number' && parsed < property.minimum) {
-        return failure('number-minimum', parsed, 'validation.number.minimum');
-    }
-    if (typeof property.maximum === 'number' && parsed > property.maximum) {
-        return failure('number-maximum', parsed, 'validation.number.maximum');
-    }
-
-    return { success: true, data: parsed };
+    return checkNumeric(constraints, parsed);
 
 }
 
 
-function parseString(property: Property, value: unknown): ParseSafeResult {
+function parseString(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
 
     const parsed = String(value ?? '');
+    return checkString(constraints, parsed);
 
-    if (typeof property.minLength === 'number' && parsed.length < property.minLength) {
+}
+
+
+function checkNumeric(constraints: ScalarConstraints, parsed: number): ParseSafeResult {
+
+    if (typeof constraints.minimum === 'number' && parsed < constraints.minimum) {
+        return failure('number-minimum', parsed, 'validation.number.minimum');
+    }
+    if (typeof constraints.maximum === 'number' && parsed > constraints.maximum) {
+        return failure('number-maximum', parsed, 'validation.number.maximum');
+    }
+
+    return checkEnum(constraints, parsed);
+
+}
+
+
+function checkString(constraints: ScalarConstraints, parsed: string): ParseSafeResult {
+
+    if (typeof constraints.minLength === 'number' && parsed.length < constraints.minLength) {
         return failure('string-min-length', parsed, 'validation.string.minLength');
     }
-    if (typeof property.maxLength === 'number' && parsed.length > property.maxLength) {
+    if (typeof constraints.maxLength === 'number' && parsed.length > constraints.maxLength) {
         return failure('string-max-length', parsed, 'validation.string.maxLength');
     }
 
-    if (typeof property.pattern === 'string' && property.pattern.length > 0) {
+    if (typeof constraints.pattern === 'string' && constraints.pattern.length > 0) {
         let regex: RegExp | null = null;
         try {
-            regex = new RegExp(property.pattern);
+            regex = new RegExp(constraints.pattern);
         } catch {
             regex = null;
         }
@@ -143,12 +221,26 @@ function parseString(property: Property, value: unknown): ParseSafeResult {
             return failure(
                 'string-pattern',
                 parsed,
-                String(property.patternErrorMessage || 'validation.string.pattern')
+                String(constraints.patternErrorMessage || 'validation.string.pattern')
             );
         }
     }
 
-    return { success: true, data: parsed };
+    return checkEnum(constraints, parsed);
+
+}
+
+
+function checkEnum(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+
+    if (Array.isArray(constraints.enum) && constraints.enum.length > 0) {
+        const member = constraints.enum.some((candidate) => candidate === value);
+        if (!member) {
+            return failure('enum-mismatch', value, 'validation.enum.mismatch');
+        }
+    }
+
+    return { success: true, data: value };
 
 }
 
@@ -198,45 +290,26 @@ function parseArray(property: Property, value: unknown): ParseSafeResult {
 
     const items = property.items;
     if (items && typeof items === 'object' && items.type !== 'any') {
+        const itemsAsScalar = items as unknown as ScalarConstraints;
+        const result: unknown[] = [];
         for (let index = 0; index < parsed.length; index += 1) {
             const element = parsed[index];
-            if (!matchesItemType(element, items)) {
+            const itemResult = parseScalar(itemsAsScalar, element);
+            if (!itemResult.success) {
                 return {
                     success: false,
-                    error: new ParseError([{
-                        code: 'array-item-type',
-                        input: element,
-                        path: [index],
-                        message: 'validation.array.itemType'
-                    }])
+                    error: new ParseError(itemResult.error.issues.map((issue) => ({
+                        ...issue,
+                        path: [index, ...issue.path]
+                    })))
                 };
             }
+            result.push(itemResult.data);
         }
+        return { success: true, data: result };
     }
 
     return { success: true, data: parsed };
-
-}
-
-
-function matchesItemType(value: unknown, items: PropertyItem): boolean {
-
-    switch (items.type) {
-        case 'boolean':
-            return typeof value === 'boolean';
-        case 'integer':
-            return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value);
-        case 'number':
-            return typeof value === 'number' && Number.isFinite(value);
-        case 'string':
-            return typeof value === 'string';
-        case 'object':
-            return isRecord(value);
-        case 'any':
-            return true;
-        default:
-            return false;
-    }
 
 }
 

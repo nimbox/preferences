@@ -1,22 +1,16 @@
+import type { ScalarConstraints } from '@nimbox/preferences';
 import { EditorItemLayout, type EditorItemProps } from './EditorItemLayout';
+import { NumberInput } from './inputs/NumberInput';
 
 
 export function NumberEditor(props: EditorItemProps) {
 
     const { item, breadcrumbs, register, error } = props;
-    const registerProps = register(item.key);
-
-    const { minimum, maximum } = item.property;
+    const constraints = item.property as unknown as ScalarConstraints;
 
     return (
         <EditorItemLayout item={item} breadcrumbs={breadcrumbs} error={error}>
-            <input
-                type="number"
-                step="any"
-                min={typeof minimum === 'number' ? minimum : undefined}
-                max={typeof maximum === 'number' ? maximum : undefined}
-                {...registerProps}
-            />
+            <NumberInput name={item.key} register={register} constraints={constraints} />
         </EditorItemLayout>
     );
 

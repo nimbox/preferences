@@ -31,5 +31,12 @@
     "notifications.digest.hours.description": "Hours for sending digest notifications.",
     "notifications.digest.schedule": "Schedule",
     "notifications.digest.schedule.weekdays": "Weekdays",
-    "notifications.digest.schedule.weekdays.description": "Weekdays used for digest schedule delivery."
+    "notifications.digest.schedule.weekdays.description": "Weekdays used for digest schedule delivery.",
+    "notifications.digest.schedule.weekdays.monday": "Monday",
+    "notifications.digest.schedule.weekdays.tuesday": "Tuesday",
+    "notifications.digest.schedule.weekdays.wednesday": "Wednesday",
+    "notifications.digest.schedule.weekdays.thursday": "Thursday",
+    "notifications.digest.schedule.weekdays.friday": "Friday",
+    "notifications.digest.schedule.weekdays.saturday": "Saturday",
+    "notifications.digest.schedule.weekdays.sunday": "Sunday"
 }

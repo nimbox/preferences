@@ -1,29 +1,16 @@
+import type { ScalarConstraints } from '@nimbox/preferences';
 import { EditorItemLayout, type EditorItemProps } from './EditorItemLayout';
+import { StringEnumInput } from './inputs/StringEnumInput';
 
 
 export function StringEnumEditor(props: EditorItemProps) {
 
     const { item, breadcrumbs, register, error } = props;
-    const registerProps = register(item.key);
-
-    const options = item.property.enum ?? [];
-    const labels = item.property.enumLabels;
+    const constraints = item.property as unknown as ScalarConstraints;
 
     return (
         <EditorItemLayout item={item} breadcrumbs={breadcrumbs} error={error}>
-            <select {...registerProps}>
-                {options.map((option, index) => {
-
-                    const label = labels?.[index] ?? String(option);
-
-                    return (
-                        <option key={`${item.key}-${String(option)}`} value={String(option)}>
-                            {label}
-                        </option>
-                    );
-
-                })}
-            </select>
+            <StringEnumInput name={item.key} register={register} constraints={constraints} />
         </EditorItemLayout>
     );
 

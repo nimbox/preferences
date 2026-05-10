@@ -1,4 +1,4 @@
-import { parseSafe, resolveAtScope, type Diagnostic, type ParseIssue, type PreferenceState, type Property, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
+import { parseSafe, resolveAtScope, type Diagnostic, type ParseIssue, type PreferenceState, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeHandler, RegisterElement } from '../types';
@@ -8,9 +8,7 @@ export type EditorError =
     | { kind: 'parse'; issues: ParseIssue[]; message: string; rawValue: string }
     | { kind: 'commit'; message: string; rawValue: string };
 
-
 export type EditorErrors = Record<Scope, Record<PropertyKey, EditorError>>;
-
 
 export interface UsePreferenceEditorProps {
 
@@ -24,7 +22,6 @@ export interface UsePreferenceEditorProps {
 
 }
 
-
 export interface UsePreferenceEditorRegisterResult {
 
     name: PropertyKey;
@@ -37,6 +34,12 @@ export interface UsePreferenceEditorRegisterResult {
 
 }
 
+export interface UsePreferenceEditorRegisterOptions {
+
+    mode?: 'change' | 'blur';
+
+}
+
 
 export interface UsePreferenceEditorResult {
 
@@ -45,18 +48,23 @@ export interface UsePreferenceEditorResult {
 
     errors: EditorErrors;
 
-    register: (key: PropertyKey) => UsePreferenceEditorRegisterResult;
+    register: (key: PropertyKey, options?: UsePreferenceEditorRegisterOptions) => UsePreferenceEditorRegisterResult;
+    setValue: (key: PropertyKey, value: unknown) => void;
     reset: (key: PropertyKey) => void;
 
 }
 
 
 interface EditorConfig {
+
     scope: Scope;
     scopes: ReadonlyArray<Scope>;
+
     schema: Schema;
     values: Values;
+
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
+
 }
 
 
@@ -66,9 +74,10 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
 
     const [errors, setErrors] = useState<EditorErrors>({});
 
-    // Latest config snapshot, read by event handlers at commit time so
-    // async commits never write to a stale scope and so `register` can
-    // remain stable across renders.
+    // Latest config snapshot, read by event handlers at commit time
+    // so async commits never write to a stale scope and so `register`
+    // can remain stable across renders.
+
     const configRef = useRef<EditorConfig>({ scope, scopes, schema, values, onChange });
     useEffect(() => {
         configRef.current = { scope, scopes, schema, values, onChange };
@@ -79,34 +88,44 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
     }, [scope, scopes, schema, values]);
 
     const commit = useCallback((event: { target: RegisterElement }, key: PropertyKey): void => {
-        void runCommit({
-            event,
-            key,
-            configRef,
-            setErrors
-        });
+        const rawValue = isCheckboxInput(event.target)
+            ? String(event.target.checked)
+            : String(event.target.value ?? '');
+        const inputValue: unknown = isCheckboxInput(event.target)
+            ? event.target.checked
+            : event.target.value;
+        void runCommit({ key, value: inputValue, rawValue, configRef, setErrors });
     }, []);
 
-    const register = useCallback((key: PropertyKey): UsePreferenceEditorRegisterResult => {
+    const setValue = useCallback((key: PropertyKey, value: unknown): void => {
+        let rawValue: string;
+        try {
+            rawValue = JSON.stringify(value);
+        } catch {
+            rawValue = String(value);
+        }
+        void runCommit({ key, value, rawValue, configRef, setErrors });
+    }, []);
+
+    const register = useCallback((key: PropertyKey, options?: UsePreferenceEditorRegisterOptions): UsePreferenceEditorRegisterResult => {
 
         const cfg = configRef.current;
-        const property = cfg.schema[key];
         const errored = errors[cfg.scope]?.[key];
         const sourceValue = errored ? errored.rawValue : state[key]?.value;
 
-        const timing = property ? commitTiming(property) : 'blur';
+        const mode = options?.mode ?? 'blur';
 
         return {
             name: key,
             defaultValue: toInputValue(sourceValue),
             defaultChecked: toInputChecked(sourceValue),
             onChange: (event) => {
-                if (timing === 'change') {
+                if (mode === 'change') {
                     commit(event, key);
                 }
             },
             onBlur: (event) => {
-                if (timing === 'blur') {
+                if (mode === 'blur') {
                     commit(event, key);
                 }
             }
@@ -123,6 +142,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
         diagnostics,
         errors,
         register,
+        setValue,
         reset
     };
 
@@ -130,21 +150,6 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
 
 
 // Utils
-
-function commitTiming(property: Property): 'change' | 'blur' {
-
-    if (property.type === 'boolean') {
-        return 'change';
-    }
-    if (property.type === 'string'
-        && Array.isArray(property.enum)
-        && property.enum.length > 0) {
-        return 'change';
-    }
-    return 'blur';
-
-}
-
 
 function toInputChecked(value: unknown): boolean {
 
@@ -177,22 +182,16 @@ function toInputValue(value: unknown): string {
 
 
 async function runCommit(params: {
-    event: { target: RegisterElement };
     key: PropertyKey;
+    value: unknown;
+    rawValue: string;
     configRef: { current: EditorConfig };
     setErrors: Dispatch<SetStateAction<EditorErrors>>;
 }): Promise<void> {
 
-    const { event, key, configRef, setErrors } = params;
+    const { key, value, rawValue, configRef, setErrors } = params;
     const cfg = configRef.current;
     const property = cfg.schema[key];
-
-    const rawValue = isCheckboxInput(event.target)
-        ? String(event.target.checked)
-        : String(event.target.value ?? '');
-    const inputValue: unknown = isCheckboxInput(event.target)
-        ? event.target.checked
-        : event.target.value;
 
     // Without a schema entry there is nothing to parse against. The
     // dispatcher should never reach here for unknown keys, so treat
@@ -201,7 +200,7 @@ async function runCommit(params: {
         return;
     }
 
-    const result = parseSafe(property, inputValue);
+    const result = parseSafe(property, value);
     if (!result.success) {
         setErrors((current) => setErrorEntry(current, cfg.scope, key, {
             kind: 'parse',

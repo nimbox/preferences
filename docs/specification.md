@@ -330,11 +330,24 @@ Missing keys emit warnings but never invalidate a `Schema`.
 `object` and `any` carry no type-specific constraints (no `minimum`, `pattern`,
 `enum`, etc.).
 
-### Enum-Compatible Properties
+## Scalar Constraints
 
-The `enum` field is only valid when `type` is `integer` or `string`. Declaring
-`enum` (or `enumLabels`, `enumDescriptions`) on any other type is invalid and
-the validator emits an error.
+A scalar value (a value of type `boolean`, `integer`, `number`, or `string`)
+admits a fixed set of constraint fields. These constraints live where the
+scalar `type` is declared:
+
+- For scalar properties (`type` ∈ `{boolean, integer, number, string}`), the
+  constraints live at the property root and apply to the property value.
+- For array properties (`type: "array"`), the constraints live on `items` and
+  apply to each element. The array itself has its own length constraints
+  (`minItems`/`maxItems`) at the property root.
+
+### Enum-Compatible Constraints
+
+The `enum` field is only valid when the in-context `type` is `integer` or
+`string`. Declaring `enum` (or `enumLabels`, `enumDescriptions`) on any other
+type is invalid and the validator emits an error. The same rule applies whether
+declared at the root or on `items`.
 
 Enum behavior is represented with:
 
@@ -347,11 +360,9 @@ Enum behavior is represented with:
   is longer per-option help text (key-or-text). When absent, no help text is
   rendered for the option.
 
-## Type-Specific Constraints
+### Numeric Constraints
 
-### Integer and Number Properties
-
-Both `integer` and `number` properties accept the same numeric bounds:
+Valid only when the in-context `type` is `integer` or `number`:
 
 - `minimum` (inclusive lower bound): the value must be greater than or equal to
   `minimum`.
@@ -361,7 +372,9 @@ Both `integer` and `number` properties accept the same numeric bounds:
 For `integer` properties, `minimum` and `maximum` should themselves be whole
 numbers.
 
-### String Properties
+### String Constraints
+
+Valid only when the in-context `type` is `string`:
 
 - `minLength`
 - `maxLength`
@@ -370,10 +383,10 @@ numbers.
 - `format` (for known formats like `date`, `time`, `email`, `uri`,
 `ipv4`)
 
-### Array Properties
+### Array Length Constraints
 
-- `minItems`
-- `maxItems`
+`minItems` and `maxItems` are array-shape constraints (not element constraints)
+and live at the property root for array properties only.
 
 ## Composition (Non-Normative)
 

@@ -71,7 +71,27 @@
     },
     "notifications.digest.schedule.weekdays": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+            "type": "string",
+            "enum": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday"
+            ],
+            "enumLabels": [
+                "%notifications.digest.schedule.weekdays.monday%",
+                "%notifications.digest.schedule.weekdays.tuesday%",
+                "%notifications.digest.schedule.weekdays.wednesday%",
+                "%notifications.digest.schedule.weekdays.thursday%",
+                "%notifications.digest.schedule.weekdays.friday%",
+                "%notifications.digest.schedule.weekdays.saturday%",
+                "%notifications.digest.schedule.weekdays.sunday%"
+            ]
+        },
         "scope": "global",
         "overridable": true,
         "default": ["monday", "wednesday", "friday"],

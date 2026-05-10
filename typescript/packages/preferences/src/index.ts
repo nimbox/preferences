@@ -1,4 +1,4 @@
-export type { Diagnostic, DiagnosticSeverity, MessageKey, Messages, PreferenceGroup, PreferenceLeaf, PreferenceNode, Preferences, PreferenceState, PreferenceTree, Property, PropertyItem, PropertyKey, Schema, Scope, Values } from './types';
+export type { Diagnostic, DiagnosticSeverity, MessageKey, Messages, PreferenceGroup, PreferenceLeaf, PreferenceNode, Preferences, PreferenceState, PreferenceTree, Property, PropertyItem, PropertyKey, ScalarConstraints, Schema, Scope, Values } from './types';
 export { buildPreferenceTree } from './utils/buildPreferenceTree';
 export type { BuildPreferenceTreeOptions, BuildPreferenceTreeResult } from './utils/buildPreferenceTree';
 export { DiagnosticCode } from './utils/diagnostics';
@@ -6,7 +6,7 @@ export { createPropertyFilter } from './utils/filter';
 export type { PropertyFilter } from './utils/filter';
 export { localizeProperty, localizeSchema } from './utils/localize';
 export { humanizeKey } from './utils/messages';
-export { isParseError, parse, ParseError, parseSafe } from './utils/parse';
+export { checkScalarValue, isParseError, parse, ParseError, parseSafe, parseScalar } from './utils/parse';
 export type { ParseIssue, ParsePropertyValue, ParseSafeResult } from './utils/parse';
 export { resolveAtScope } from './utils/resolveAtScope';
 export type { ResolveAtScopeResult } from './utils/resolveAtScope';

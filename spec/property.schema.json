@@ -42,54 +42,6 @@
             "description": "Element shape. Required when `type` is `array`; forbidden otherwise.",
             "$ref": "#/$defs/item"
         },
-        "enum": {
-            "description": "Allowed values. Only valid for boolean, integer, number, or string properties.",
-            "type": "array",
-            "minItems": 1
-        },
-        "enumLabels": {
-            "description": "Per-option short labels (key-or-text), aligned by index with `enum`.",
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 }
-        },
-        "enumDescriptions": {
-            "description": "Per-option long help (key-or-text), aligned by index with `enum`.",
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 }
-        },
-        "minimum": {
-            "description": "Inclusive lower bound. Only valid for integer or number properties.",
-            "type": "number"
-        },
-        "maximum": {
-            "description": "Inclusive upper bound. Only valid for integer or number properties.",
-            "type": "number"
-        },
-        "minLength": {
-            "description": "Minimum string length. Only valid for string properties.",
-            "type": "integer",
-            "minimum": 0
-        },
-        "maxLength": {
-            "description": "Maximum string length. Only valid for string properties.",
-            "type": "integer",
-            "minimum": 0
-        },
-        "pattern": {
-            "description": "Regular expression a string value must match. Only valid for string properties.",
-            "type": "string",
-            "format": "regex"
-        },
-        "patternErrorMessage": {
-            "description": "Diagnostic shown when `pattern` fails (key-or-text).",
-            "type": "string",
-            "minLength": 1
-        },
-        "format": {
-            "description": "Known string format. Only valid for string properties.",
-            "type": "string",
-            "enum": ["date", "time", "email", "uri", "ipv4"]
-        },
         "minItems": {
             "description": "Minimum array length. Only valid for array properties.",
             "type": "integer",
@@ -113,55 +65,6 @@
         {
             "if": {
                 "anyOf": [
-                    { "required": ["enumLabels"] },
-                    { "required": ["enumDescriptions"] }
-                ]
-            },
-            "then": { "required": ["enum"] }
-        },
-        {
-            "if": { "required": ["enum"] },
-            "then": {
-                "required": ["type"],
-                "properties": {
-                    "type": { "enum": ["integer", "string"] }
-                }
-            }
-        },
-        {
-            "if": {
-                "anyOf": [
-                    { "required": ["minimum"] },
-                    { "required": ["maximum"] }
-                ]
-            },
-            "then": {
-                "required": ["type"],
-                "properties": {
-                    "type": { "enum": ["integer", "number"] }
-                }
-            }
-        },
-        {
-            "if": {
-                "anyOf": [
-                    { "required": ["minLength"] },
-                    { "required": ["maxLength"] },
-                    { "required": ["pattern"] },
-                    { "required": ["patternErrorMessage"] },
-                    { "required": ["format"] }
-                ]
-            },
-            "then": {
-                "required": ["type"],
-                "properties": {
-                    "type": { "const": "string" }
-                }
-            }
-        },
-        {
-            "if": {
-                "anyOf": [
                     { "required": ["minItems"] },
                     { "required": ["maxItems"] }
                 ]
@@ -172,13 +75,14 @@
                     "type": { "const": "array" }
                 }
             }
-        }
+        },
+        { "$ref": "#/$defs/scalarConstraints" }
     ],
     "additionalProperties": true,
     "$defs": {
         "item": {
             "title": "PropertyItem",
-            "description": "Element shape for `array` properties. Nested arrays are not supported; use `any` if elements may themselves be arrays.",
+            "description": "Element shape for `array` properties. Element-level scalar constraints (enum, minimum/maximum, pattern, etc.) are declared here. Nested arrays are not supported; use `any` if elements may themselves be arrays.",
             "type": "object",
             "required": ["type"],
             "properties": {
@@ -187,7 +91,117 @@
                     "enum": ["boolean", "integer", "number", "string", "object", "any"]
                 }
             },
-            "additionalProperties": false
+            "allOf": [
+                { "$ref": "#/$defs/scalarConstraints" }
+            ],
+            "unevaluatedProperties": false
+        },
+        "scalarConstraints": {
+            "title": "ScalarConstraints",
+            "description": "Constraints that apply to a single scalar value. Used at the property root for scalar properties, and on `items` for array properties (where they apply per element).",
+            "type": "object",
+            "properties": {
+                "enum": {
+                    "description": "Allowed values. Valid only when the in-context `type` is `integer` or `string`.",
+                    "type": "array",
+                    "minItems": 1
+                },
+                "enumLabels": {
+                    "description": "Per-option short labels (key-or-text), aligned by index with `enum`.",
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                },
+                "enumDescriptions": {
+                    "description": "Per-option long help (key-or-text), aligned by index with `enum`.",
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                },
+                "minimum": {
+                    "description": "Inclusive lower bound. Valid only when the in-context `type` is `integer` or `number`.",
+                    "type": "number"
+                },
+                "maximum": {
+                    "description": "Inclusive upper bound. Valid only when the in-context `type` is `integer` or `number`.",
+                    "type": "number"
+                },
+                "minLength": {
+                    "description": "Minimum string length. Valid only when the in-context `type` is `string`.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "maxLength": {
+                    "description": "Maximum string length. Valid only when the in-context `type` is `string`.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "pattern": {
+                    "description": "Regular expression a string value must match. Valid only when the in-context `type` is `string`.",
+                    "type": "string",
+                    "format": "regex"
+                },
+                "patternErrorMessage": {
+                    "description": "Diagnostic shown when `pattern` fails (key-or-text).",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "format": {
+                    "description": "Known string format. Valid only when the in-context `type` is `string`.",
+                    "type": "string",
+                    "enum": ["date", "time", "email", "uri", "ipv4"]
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "anyOf": [
+                            { "required": ["enumLabels"] },
+                            { "required": ["enumDescriptions"] }
+                        ]
+                    },
+                    "then": { "required": ["enum"] }
+                },
+                {
+                    "if": { "required": ["enum"] },
+                    "then": {
+                        "required": ["type"],
+                        "properties": {
+                            "type": { "enum": ["integer", "string"] }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "anyOf": [
+                            { "required": ["minimum"] },
+                            { "required": ["maximum"] }
+                        ]
+                    },
+                    "then": {
+                        "required": ["type"],
+                        "properties": {
+                            "type": { "enum": ["integer", "number"] }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "anyOf": [
+                            { "required": ["minLength"] },
+                            { "required": ["maxLength"] },
+                            { "required": ["pattern"] },
+                            { "required": ["patternErrorMessage"] },
+                            { "required": ["format"] }
+                        ]
+                    },
+                    "then": {
+                        "required": ["type"],
+                        "properties": {
+                            "type": { "const": "string" }
+                        }
+                    }
+                }
+            ]
+
         }
     }
 }

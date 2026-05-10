@@ -10,99 +10,60 @@
  */
 export type Property = {
   [k: string]: unknown;
-} & {
-  /**
-   * JSON value type of the property.
-   */
-  type: "boolean" | "integer" | "number" | "string" | "array" | "object" | "any";
-  /**
-   * Owning scope: layer where resolution begins for this property.
-   */
-  scope: string;
-  /**
-   * Whether scopes downstream of `scope` may replace the value.
-   */
-  overridable: boolean;
-  /**
-   * Fallback value when no scope authors a value. Must satisfy `type`, `items`, declared constraints, and `enum`.
-   */
-  default?:
-    | boolean
-    | number
-    | string
-    | unknown[]
-    | {
-        [k: string]: unknown;
-      };
-  /**
-   * Markdown text or `%key%` message reference.
-   */
-  description?: string;
-  /**
-   * Optional deprecation notice (key-or-text).
-   */
-  deprecationMessage?: string;
-  /**
-   * Optional sibling-ordering hint for hierarchical display.
-   */
-  order?: number;
-  items?: PropertyItem;
-  /**
-   * Allowed values. Only valid for boolean, integer, number, or string properties.
-   *
-   * @minItems 1
-   */
-  enum?: [unknown, ...unknown[]];
-  /**
-   * Per-option short labels (key-or-text), aligned by index with `enum`.
-   */
-  enumLabels?: string[];
-  /**
-   * Per-option long help (key-or-text), aligned by index with `enum`.
-   */
-  enumDescriptions?: string[];
-  /**
-   * Inclusive lower bound. Only valid for integer or number properties.
-   */
-  minimum?: number;
-  /**
-   * Inclusive upper bound. Only valid for integer or number properties.
-   */
-  maximum?: number;
-  /**
-   * Minimum string length. Only valid for string properties.
-   */
-  minLength?: number;
-  /**
-   * Maximum string length. Only valid for string properties.
-   */
-  maxLength?: number;
-  /**
-   * Regular expression a string value must match. Only valid for string properties.
-   */
-  pattern?: string;
-  /**
-   * Diagnostic shown when `pattern` fails (key-or-text).
-   */
-  patternErrorMessage?: string;
-  /**
-   * Known string format. Only valid for string properties.
-   */
-  format?: "date" | "time" | "email" | "uri" | "ipv4";
-  /**
-   * Minimum array length. Only valid for array properties.
-   */
-  minItems?: number;
-  /**
-   * Maximum array length. Only valid for array properties.
-   */
-  maxItems?: number;
+} & ScalarConstraints & {
+    /**
+     * JSON value type of the property.
+     */
+    type: "boolean" | "integer" | "number" | "string" | "array" | "object" | "any";
+    /**
+     * Owning scope: layer where resolution begins for this property.
+     */
+    scope: string;
+    /**
+     * Whether scopes downstream of `scope` may replace the value.
+     */
+    overridable: boolean;
+    /**
+     * Fallback value when no scope authors a value. Must satisfy `type`, `items`, declared constraints, and `enum`.
+     */
+    default?:
+      | boolean
+      | number
+      | string
+      | unknown[]
+      | {
+          [k: string]: unknown;
+        };
+    /**
+     * Markdown text or `%key%` message reference.
+     */
+    description?: string;
+    /**
+     * Optional deprecation notice (key-or-text).
+     */
+    deprecationMessage?: string;
+    /**
+     * Optional sibling-ordering hint for hierarchical display.
+     */
+    order?: number;
+    items?: PropertyItem;
+    /**
+     * Minimum array length. Only valid for array properties.
+     */
+    minItems?: number;
+    /**
+     * Maximum array length. Only valid for array properties.
+     */
+    maxItems?: number;
+    [k: string]: unknown;
+  };
+/**
+ * Constraints that apply to a single scalar value. Used at the property root for scalar properties, and on `items` for array properties (where they apply per element).
+ */
+export type ScalarConstraints = {
   [k: string]: unknown;
 };
-
 /**
  * Element shape. Required when `type` is `array`; forbidden otherwise.
  */
-export interface PropertyItem {
-  type: "boolean" | "integer" | "number" | "string" | "object" | "any";
-}
+export type PropertyItem = ScalarConstraints;

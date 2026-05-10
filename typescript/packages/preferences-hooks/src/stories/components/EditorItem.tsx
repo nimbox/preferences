@@ -1,4 +1,5 @@
 import { AnyEditor } from './editors/AnyEditor';
+import { ArrayEditor } from './editors/ArrayEditor';
 import { BooleanEditor } from './editors/BooleanEditor';
 import { type EditorItemProps } from './editors/EditorItemLayout';
 import { IntegerEditor } from './editors/IntegerEditor';
@@ -33,13 +34,13 @@ export function EditorItem(props: EditorItemProps) {
         case 'object':
             return <ObjectEditor {...props} />;
 
+        case 'array':
+            return <ArrayEditor {...props} />;
+
         case 'any':
             return <AnyEditor {...props} />;
 
         default:
-            // `array` and unknown types fall through to the generic
-            // JSON editor so the value remains editable until a
-            // dedicated editor is implemented.
             return <AnyEditor {...props} />;
 
     }
