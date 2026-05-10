@@ -54,13 +54,19 @@ const meta = {
             values: resolvedValues,
             onChange: async (nextScope, key, value) => {
                 setResolvedValues((current) => {
-                    return {
-                        ...current,
-                        [nextScope]: {
-                            ...(current[nextScope] ?? {}),
-                            [key]: value
-                        }
-                    };
+                    const scopeValues = { ...(current[nextScope] ?? {}) };
+                    if (value == null) {
+                        delete scopeValues[key];
+                    } else {
+                        scopeValues[key] = value;
+                    }
+                    const next: Values = { ...current };
+                    if (Object.keys(scopeValues).length === 0) {
+                        delete next[nextScope];
+                    } else {
+                        next[nextScope] = scopeValues;
+                    }
+                    return next;
                 });
                 args.onChange(nextScope, key, value);
             }
@@ -79,7 +85,7 @@ const meta = {
 
                 <div style={{ display: 'flex', gap: '1rem', flex: 1, minHeight: 0 }}>
 
-                    <div style={{ flex: '0 0 240px', padding: '0 1rem', overflow: 'auto' }}>
+                    <div style={{ flex: '0 0 180px', padding: '0 1rem', overflow: 'auto' }}>
                         <GroupPane
                             nodes={tree}
                             depth={args.depth}
@@ -98,6 +104,30 @@ const meta = {
                             state={editor.state}
                             errors={editor.errors}
                         />
+                    </div>
+
+                    <div
+                        style={{
+                            flex: '0 0 38%',
+                            maxWidth: 'min(480px, 45vw)',
+                            minWidth: 0,
+                            padding: '0 1rem',
+                            overflow: 'auto',
+                            borderLeft: '1px solid #e5e7eb'
+                        }}
+                    >
+                        <pre
+                            style={{
+                                margin: 0,
+                                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                                fontSize: 12,
+                                lineHeight: 1.45,
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word'
+                            }}
+                        >
+                            {JSON.stringify(resolvedValues, null, 4)}
+                        </pre>
                     </div>
 
                 </div>

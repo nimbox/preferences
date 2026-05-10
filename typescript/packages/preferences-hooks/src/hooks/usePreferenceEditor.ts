@@ -18,6 +18,11 @@ export interface UsePreferenceEditorProps {
     schema: Schema;
     values: Values;
 
+    /**
+     * Persist a committed value for `key` in `scope`. When `value` is
+     * `null` (e.g. after `clear`), hosts usually **remove** that
+     * property from the scope map instead of storing `null`.
+     */
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
 
 }
