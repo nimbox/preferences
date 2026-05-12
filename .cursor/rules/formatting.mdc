@@ -5,7 +5,7 @@ globs:
 ---
 
 
-## Newlines, imports & indentation (`preferences-hooks`)
+## Newlines, imports & indentation (`preferences-react`)
 
 - **Indentation:** Use **4 spaces** everywhere (all `.ts` / `.tsx`
   files).

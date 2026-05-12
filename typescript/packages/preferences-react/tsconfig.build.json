@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": false,
+    "declarationMap": false,
+    "allowImportingTsExtensions": false,
+    "types": ["react", "react-dom"],
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": [
+    "src/index.ts",
+    "src/types.ts",
+    "src/hooks/**/*.ts"
+  ],
+  "exclude": [
+    "src/stories",
+    "**/*.stories.*"
+  ]
+}

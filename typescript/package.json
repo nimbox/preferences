@@ -7,8 +7,8 @@
   ],
   "scripts": {
     "generate": "npm run generate --workspace @nimbox/preferences",
-    "build": "npm run build --workspace @nimbox/preferences",
-    "typecheck": "npm run typecheck --workspace @nimbox/preferences"
+    "build": "npm run build --workspace @nimbox/preferences && npm run build --workspace @nimbox/preferences-react",
+    "typecheck": "npm run typecheck --workspace @nimbox/preferences && npm run typecheck --workspace @nimbox/preferences-react"
   },
   "overrides": {
     "vite": "^8.0.3",

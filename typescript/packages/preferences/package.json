@@ -16,11 +16,18 @@
   ],
   "scripts": {
     "generate": "json2ts -i ../../../spec/property.schema.json -o ./src/generated/property.ts --cwd ../../../spec && json2ts -i ../../../spec/messages.schema.json -o ./src/generated/messages.ts --cwd ../../../spec && json2ts -i ../../../spec/values.schema.json -o ./src/generated/values.ts --cwd ../../../spec",
-    "build": "npm run generate && tsc -b --force ./tsconfig.json",
+    "build": "npm run generate && rm -rf dist && rollup -c && npm run build:types",
+    "build:types": "tsc -p ./tsconfig.types.json",
+    "build:watch": "rm -rf dist && rollup -cw",
     "typecheck": "npm run generate && tsc -p ./tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-typescript": "^12.3.0",
     "json-schema-to-typescript": "^15.0.4",
+    "rollup": "^4.55.1",
+    "rollup-plugin-filesize": "^10.0.0",
     "typescript": "^6.0.3"
   }
 }
