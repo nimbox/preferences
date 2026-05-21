@@ -1,12 +1,27 @@
 import type { Messages } from './generated/messages';
 import type { Property, PropertyItem } from './generated/property';
+import type { InvalidEnumPropertyIssue, InvalidJsonPropertyIssue, InvalidPatternPropertyIssue, InvalidTypePropertyIssue, IssuePathSegment, PropertyIssue, PropertyIssueBase, TooBigPropertyIssue, TooSmallPropertyIssue } from './generated/issue';
 import type { Values } from './generated/values';
 
 
 // Re-export the generated spec types so this module is the single source
 // of truth for consumers.
 
-export type { Messages, Property, PropertyItem, Values };
+export type {
+    InvalidEnumPropertyIssue,
+    InvalidJsonPropertyIssue,
+    InvalidPatternPropertyIssue,
+    InvalidTypePropertyIssue,
+    IssuePathSegment,
+    Messages,
+    Property,
+    PropertyIssue,
+    PropertyIssueBase,
+    PropertyItem,
+    TooBigPropertyIssue,
+    TooSmallPropertyIssue,
+    Values
+};
 
 
 // Constraints that apply to a single scalar value. The generated

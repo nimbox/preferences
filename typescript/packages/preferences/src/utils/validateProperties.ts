@@ -1,6 +1,6 @@
 import type { Diagnostic, Property, PropertyItem, ScalarConstraints, Schema } from '../types';
 import { DiagnosticCode, error } from './diagnostics';
-import { checkScalarValue } from './parse';
+import { checkScalarValue, isInvalidEnumIssue } from './parse';
 
 
 const PROPERTY_TYPES = new Set([
@@ -344,8 +344,9 @@ function validateDefault(key: string, property: Property, errors: Diagnostic[]):
     if (propertyType !== 'array' && propertyType !== 'object' && propertyType !== 'any') {
         const result = checkScalarValue(property as ScalarConstraints, defaultValue);
         if (!result.success) {
+            const issue = result.error.issues[0];
             errors.push(error({
-                code: result.error.issues[0]?.code === 'enum-mismatch'
+                code: issue && isInvalidEnumIssue(issue)
                     ? DiagnosticCode.ENUM_DEFAULT_MISMATCH
                     : DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
                 key,
@@ -383,8 +384,9 @@ function validateDefault(key: string, property: Property, errors: Diagnostic[]):
                 }
                 const result = checkScalarValue(items as unknown as ScalarConstraints, element);
                 if (!result.success) {
+                    const issue = result.error.issues[0];
                     errors.push(error({
-                        code: result.error.issues[0]?.code === 'enum-mismatch'
+                        code: issue && isInvalidEnumIssue(issue)
                             ? DiagnosticCode.ENUM_DEFAULT_MISMATCH
                             : DiagnosticCode.DEFAULT_CONSTRAINT_VIOLATION,
                         key,

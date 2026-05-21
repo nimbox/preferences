@@ -1,42 +1,72 @@
+import type { InvalidEnumPropertyIssue, InvalidJsonPropertyIssue, InvalidPatternPropertyIssue, InvalidTypePropertyIssue, IssuePathSegment, PropertyIssue, PropertyIssueBase, TooBigPropertyIssue, TooSmallPropertyIssue } from '../generated/issue';
 import type { Property, ScalarConstraints } from '../types';
 
 
-export interface ParseIssue {
-    readonly code?: string;
-    readonly input?: unknown;
-    readonly path: ReadonlyArray<PropertyKey>;
-    readonly message: string;
-}
+// -----------------------------------------------------------------------------
+// Public error type, parse types, and exported issue guards
+// -----------------------------------------------------------------------------
 
+export class PropertyError extends Error {
 
-export class ParseError extends Error {
+    readonly issues: PropertyIssue[];
 
-    readonly issues: ParseIssue[];
-
-    constructor(issues: ParseIssue[]) {
+    constructor(issues: PropertyIssue[]) {
         super(issues[0]?.message ?? 'Parse failed');
-        this.name = 'ParseError';
+        this.name = 'PropertyError';
         this.issues = issues;
     }
 
 }
 
-
 export type ParsePropertyValue = (property: Property, value: unknown) => unknown;
 
-export type ParseSafeResult =
+export type SafeParseResult =
     | { success: true; data: unknown }
-    | { success: false; error: ParseError };
+    | { success: false; error: PropertyError };
 
 
-export function isParseError(error: unknown): error is ParseError {
-    return error instanceof ParseError;
+export function isPropertyError(error: unknown): error is PropertyError {
+    return error instanceof PropertyError;
 }
 
 
+export function isTooSmallIssue(issue: PropertyIssue): issue is TooSmallPropertyIssue {
+    return issue.code === 'too_small';
+}
+
+
+export function isTooBigIssue(issue: PropertyIssue): issue is TooBigPropertyIssue {
+    return issue.code === 'too_big';
+}
+
+
+export function isInvalidTypeIssue(issue: PropertyIssue): issue is InvalidTypePropertyIssue {
+    return issue.code === 'invalid_type';
+}
+
+
+export function isInvalidEnumIssue(issue: PropertyIssue): issue is InvalidEnumPropertyIssue {
+    return issue.code === 'invalid_enum';
+}
+
+
+export function isInvalidPatternIssue(issue: PropertyIssue): issue is InvalidPatternPropertyIssue {
+    return issue.code === 'invalid_pattern';
+}
+
+
+export function isInvalidJsonIssue(issue: PropertyIssue): issue is InvalidJsonPropertyIssue {
+    return issue.code === 'invalid_json';
+}
+
+
+// -----------------------------------------------------------------------------
+// Entry points: throwing `parse` and `safeParse` dispatcher by property kind
+// -----------------------------------------------------------------------------
+
 export const parse: ParsePropertyValue = (property, value) => {
 
-    const result = parseSafe(property, value);
+    const result = safeParse(property, value);
     if (!result.success) {
         throw result.error;
     }
@@ -46,7 +76,7 @@ export const parse: ParsePropertyValue = (property, value) => {
 };
 
 
-export function parseSafe(property: Property, value: unknown): ParseSafeResult {
+export function safeParse(property: Property, value: unknown): SafeParseResult {
 
     switch (property.type) {
 
@@ -56,22 +86,26 @@ export function parseSafe(property: Property, value: unknown): ParseSafeResult {
         case 'string':
             return parseScalar(property as ScalarConstraints, value);
 
-        case 'object':
-            return parseObject(value);
-
         case 'array':
             return parseArray(property, value);
 
+        case 'object':
+            return parseObject(value);
+
         case 'any':
-            return { success: true, data: value };
+            return parseAny(value);
 
         default:
-            return { success: true, data: value };
+            return parseAny(value);
 
     }
 
 }
 
+
+// -----------------------------------------------------------------------------
+// Scalar: coercion + validation (`parseScalar`) vs constraint-only (`checkScalarValue`)
+// -----------------------------------------------------------------------------
 
 /**
  * Coerce `value` to the type declared in `constraints`, then check
@@ -81,12 +115,12 @@ export function parseSafe(property: Property, value: unknown): ParseSafeResult {
  * For default validation (where coercion is not desired) call
  * `checkScalarValue` instead.
  */
-export function parseScalar(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+export function parseScalar(constraints: ScalarConstraints, value: unknown): SafeParseResult {
 
     switch (constraints.type) {
 
         case 'boolean':
-            return parseBoolean(constraints, value);
+            return parseBoolean(value);
 
         case 'integer':
             return parseNumeric(constraints, value, true);
@@ -101,10 +135,10 @@ export function parseScalar(constraints: ScalarConstraints, value: unknown): Par
             return parseObject(value);
 
         case 'any':
-            return { success: true, data: value };
+            return parseAny(value);
 
         default:
-            return { success: true, data: value };
+            return parseAny(value);
 
     }
 
@@ -116,12 +150,12 @@ export function parseScalar(constraints: ScalarConstraints, value: unknown): Par
  * scalar type. Performs only enum/min/max/length/pattern checks; no
  * coercion. Used by `validateDefault` after a strict type check.
  */
-export function checkScalarValue(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+export function checkScalarValue(constraints: ScalarConstraints, value: unknown): SafeParseResult {
 
     switch (constraints.type) {
 
         case 'boolean':
-            return checkEnum(constraints, value);
+            return checkBoolean(value as boolean);
 
         case 'integer':
         case 'number':
@@ -131,16 +165,121 @@ export function checkScalarValue(constraints: ScalarConstraints, value: unknown)
             return checkString(constraints, value as string);
 
         case 'object':
+            return checkObject(value);
+
         case 'any':
+            return checkAny(value);
+
         default:
-            return { success: true, data: value };
+            return checkAny(value);
 
     }
 
 }
 
 
-function parseBoolean(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+// -----------------------------------------------------------------------------
+// Internal: `PropertyIssue` builders and `fail` helper
+// -----------------------------------------------------------------------------
+
+interface IssueFields {
+    input: unknown;
+    path?: IssuePathSegment[];
+    message: string;
+}
+
+
+type IssueInput = Exclude<PropertyIssueBase['input'], undefined>;
+
+
+function toIssueInput(input: unknown): IssueInput {
+    if (input === undefined) {
+        return null;
+    }
+    return input as IssueInput;
+}
+
+
+function tooSmall(params: IssueFields & { origin: TooSmallPropertyIssue['origin']; minimum: number }): TooSmallPropertyIssue {
+    return {
+        code: 'too_small',
+        origin: params.origin,
+        minimum: params.minimum,
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
+function tooBig(params: IssueFields & { origin: TooBigPropertyIssue['origin']; maximum: number }): TooBigPropertyIssue {
+    return {
+        code: 'too_big',
+        origin: params.origin,
+        maximum: params.maximum,
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
+function invalidType(params: IssueFields & { expected: string }): InvalidTypePropertyIssue {
+    return {
+        code: 'invalid_type',
+        expected: params.expected,
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
+function invalidEnum(params: IssueFields & { options: readonly unknown[] }): InvalidEnumPropertyIssue {
+    return {
+        code: 'invalid_enum',
+        options: [...params.options] as InvalidEnumPropertyIssue['options'],
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
+function invalidPattern(params: IssueFields & { pattern: string }): InvalidPatternPropertyIssue {
+    return {
+        code: 'invalid_pattern',
+        pattern: params.pattern,
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
+function invalidJson(params: IssueFields): InvalidJsonPropertyIssue {
+    return {
+        code: 'invalid_json',
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
+function fail(issue: PropertyIssue): SafeParseResult {
+    return {
+        success: false,
+        error: new PropertyError([issue])
+    };
+}
+
+
+// -----------------------------------------------------------------------------
+// Boolean
+// -----------------------------------------------------------------------------
+
+function parseBoolean(value: unknown): SafeParseResult {
 
     let coerced: boolean;
     if (typeof value === 'boolean') {
@@ -153,25 +292,48 @@ function parseBoolean(constraints: ScalarConstraints, value: unknown): ParseSafe
         coerced = Boolean(value);
     }
 
-    return checkEnum(constraints, coerced);
+    return checkBoolean(coerced);
 
 }
 
 
-function parseNumeric(constraints: ScalarConstraints, value: unknown, integer: boolean): ParseSafeResult {
+function checkBoolean(value: boolean): SafeParseResult {
+
+    return { success: true, data: value };
+
+}
+
+
+// -----------------------------------------------------------------------------
+// Number / integer
+// -----------------------------------------------------------------------------
+
+function parseNumeric(constraints: ScalarConstraints, value: unknown, integer: boolean): SafeParseResult {
 
     const text = String(value ?? '').trim();
     if (!text) {
-        return failure('number-required', value, integer ? 'validation.integer.required' : 'validation.number.required');
+        return fail(invalidType({
+            expected: integer ? 'integer' : 'number',
+            input: value,
+            message: integer ? 'validation.integer.required' : 'validation.number.required'
+        }));
     }
 
     const parsed = Number(text);
     if (!Number.isFinite(parsed)) {
-        return failure('number-invalid', value, integer ? 'validation.integer.invalid' : 'validation.number.invalid');
+        return fail(invalidType({
+            expected: integer ? 'integer' : 'number',
+            input: value,
+            message: integer ? 'validation.integer.invalid' : 'validation.number.invalid'
+        }));
     }
 
     if (integer && !Number.isInteger(parsed)) {
-        return failure('integer-invalid', value, 'validation.integer.invalid');
+        return fail(invalidType({
+            expected: 'integer',
+            input: value,
+            message: 'validation.integer.invalid'
+        }));
     }
 
     return checkNumeric(constraints, parsed);
@@ -179,21 +341,23 @@ function parseNumeric(constraints: ScalarConstraints, value: unknown, integer: b
 }
 
 
-function parseString(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
-
-    const parsed = String(value ?? '');
-    return checkString(constraints, parsed);
-
-}
-
-
-function checkNumeric(constraints: ScalarConstraints, parsed: number): ParseSafeResult {
+function checkNumeric(constraints: ScalarConstraints, parsed: number): SafeParseResult {
 
     if (typeof constraints.minimum === 'number' && parsed < constraints.minimum) {
-        return failure('number-minimum', parsed, 'validation.number.minimum');
+        return fail(tooSmall({
+            origin: 'number',
+            minimum: constraints.minimum,
+            input: parsed,
+            message: 'validation.number.minimum'
+        }));
     }
     if (typeof constraints.maximum === 'number' && parsed > constraints.maximum) {
-        return failure('number-maximum', parsed, 'validation.number.maximum');
+        return fail(tooBig({
+            origin: 'number',
+            maximum: constraints.maximum,
+            input: parsed,
+            message: 'validation.number.maximum'
+        }));
     }
 
     return checkEnum(constraints, parsed);
@@ -201,13 +365,35 @@ function checkNumeric(constraints: ScalarConstraints, parsed: number): ParseSafe
 }
 
 
-function checkString(constraints: ScalarConstraints, parsed: string): ParseSafeResult {
+// -----------------------------------------------------------------------------
+// String
+// -----------------------------------------------------------------------------
+
+function parseString(constraints: ScalarConstraints, value: unknown): SafeParseResult {
+
+    const parsed = String(value ?? '');
+    return checkString(constraints, parsed);
+
+}
+
+
+function checkString(constraints: ScalarConstraints, parsed: string): SafeParseResult {
 
     if (typeof constraints.minLength === 'number' && parsed.length < constraints.minLength) {
-        return failure('string-min-length', parsed, 'validation.string.minLength');
+        return fail(tooSmall({
+            origin: 'string',
+            minimum: constraints.minLength,
+            input: parsed,
+            message: 'validation.string.minLength'
+        }));
     }
     if (typeof constraints.maxLength === 'number' && parsed.length > constraints.maxLength) {
-        return failure('string-max-length', parsed, 'validation.string.maxLength');
+        return fail(tooBig({
+            origin: 'string',
+            maximum: constraints.maxLength,
+            input: parsed,
+            message: 'validation.string.maxLength'
+        }));
     }
 
     if (typeof constraints.pattern === 'string' && constraints.pattern.length > 0) {
@@ -218,11 +404,11 @@ function checkString(constraints: ScalarConstraints, parsed: string): ParseSafeR
             regex = null;
         }
         if (regex && !regex.test(parsed)) {
-            return failure(
-                'string-pattern',
-                parsed,
-                String(constraints.patternErrorMessage || 'validation.string.pattern')
-            );
+            return fail(invalidPattern({
+                pattern: constraints.pattern,
+                input: parsed,
+                message: String(constraints.patternErrorMessage || 'validation.string.pattern')
+            }));
         }
     }
 
@@ -231,12 +417,20 @@ function checkString(constraints: ScalarConstraints, parsed: string): ParseSafeR
 }
 
 
-function checkEnum(constraints: ScalarConstraints, value: unknown): ParseSafeResult {
+// -----------------------------------------------------------------------------
+// Enum (shared terminal check for numeric and string scalars)
+// -----------------------------------------------------------------------------
+
+function checkEnum(constraints: ScalarConstraints, value: unknown): SafeParseResult {
 
     if (Array.isArray(constraints.enum) && constraints.enum.length > 0) {
         const member = constraints.enum.some((candidate) => candidate === value);
         if (!member) {
-            return failure('enum-mismatch', value, 'validation.enum.mismatch');
+            return fail(invalidEnum({
+                options: constraints.enum,
+                input: value,
+                message: 'validation.enum.mismatch'
+            }));
         }
     }
 
@@ -245,26 +439,11 @@ function checkEnum(constraints: ScalarConstraints, value: unknown): ParseSafeRes
 }
 
 
-function parseObject(value: unknown): ParseSafeResult {
+// -----------------------------------------------------------------------------
+// Array
+// -----------------------------------------------------------------------------
 
-    if (isRecord(value)) {
-        return { success: true, data: value };
-    }
-
-    try {
-        const parsed = JSON.parse(String(value ?? ''));
-        if (!isRecord(parsed)) {
-            return failure('object-invalid', parsed, 'validation.object.requiredObject');
-        }
-        return { success: true, data: parsed };
-    } catch {
-        return failure('object-json', value, 'validation.object.invalidJson');
-    }
-
-}
-
-
-function parseArray(property: Property, value: unknown): ParseSafeResult {
+function parseArray(property: Property, value: unknown): SafeParseResult {
 
     let parsed: unknown;
     if (Array.isArray(value)) {
@@ -273,19 +452,36 @@ function parseArray(property: Property, value: unknown): ParseSafeResult {
         try {
             parsed = JSON.parse(String(value ?? ''));
         } catch {
-            return failure('array-json', value, 'validation.array.invalidJson');
+            return fail(invalidJson({
+                input: value,
+                message: 'validation.array.invalidJson'
+            }));
         }
     }
 
     if (!Array.isArray(parsed)) {
-        return failure('array-invalid', parsed, 'validation.array.requiredArray');
+        return fail(invalidType({
+            expected: 'array',
+            input: parsed,
+            message: 'validation.array.requiredArray'
+        }));
     }
 
     if (typeof property.minItems === 'number' && parsed.length < property.minItems) {
-        return failure('array-min-items', parsed, 'validation.array.minItems');
+        return fail(tooSmall({
+            origin: 'array',
+            minimum: property.minItems,
+            input: parsed,
+            message: 'validation.array.minItems'
+        }));
     }
     if (typeof property.maxItems === 'number' && parsed.length > property.maxItems) {
-        return failure('array-max-items', parsed, 'validation.array.maxItems');
+        return fail(tooBig({
+            origin: 'array',
+            maximum: property.maxItems,
+            input: parsed,
+            message: 'validation.array.maxItems'
+        }));
     }
 
     const items = property.items;
@@ -298,7 +494,7 @@ function parseArray(property: Property, value: unknown): ParseSafeResult {
             if (!itemResult.success) {
                 return {
                     success: false,
-                    error: new ParseError(itemResult.error.issues.map((issue) => ({
+                    error: new PropertyError(itemResult.error.issues.map((issue) => ({
                         ...issue,
                         path: [index, ...issue.path]
                     })))
@@ -314,14 +510,76 @@ function parseArray(property: Property, value: unknown): ParseSafeResult {
 }
 
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
+// -----------------------------------------------------------------------------
+// Object
+// -----------------------------------------------------------------------------
+
+function parseObject(value: unknown): SafeParseResult {
+
+    if (isRecord(value)) {
+        return checkObject(value);
+    }
+
+    try {
+        const parsed = JSON.parse(String(value ?? ''));
+        if (!isRecord(parsed)) {
+            return fail(invalidType({
+                expected: 'object',
+                input: parsed,
+                message: 'validation.object.requiredObject'
+            }));
+        }
+        return checkObject(parsed);
+    } catch {
+        return fail(invalidJson({
+            input: value,
+            message: 'validation.object.invalidJson'
+        }));
+    }
+
 }
 
 
-function failure(code: string, input: unknown, message: string): ParseSafeResult {
-    return {
-        success: false,
-        error: new ParseError([{ code, input, path: [], message }])
-    };
+function checkObject(value: unknown): SafeParseResult {
+
+    return { success: true, data: value };
+
+}
+
+
+// -----------------------------------------------------------------------------
+// Any (optional JSON parse when value is a string)
+// -----------------------------------------------------------------------------
+
+function parseAny(value: unknown): SafeParseResult {
+
+    if (typeof value !== 'string') {
+        return checkAny(value);
+    }
+
+    try {
+        return checkAny(JSON.parse(value));
+    } catch {
+        return fail(invalidJson({
+            input: value,
+            message: 'validation.any.invalidJson'
+        }));
+    }
+
+}
+
+
+function checkAny(value: unknown): SafeParseResult {
+
+    return { success: true, data: value };
+
+}
+
+
+// -----------------------------------------------------------------------------
+// Small utilities
+// -----------------------------------------------------------------------------
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

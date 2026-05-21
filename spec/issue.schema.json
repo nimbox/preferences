@@ -1,0 +1,159 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.nimbox.com/preferences/v1/issue.schema.json",
+    "title": "PropertyIssue",
+    "description": "Validation issue raised when a runtime value fails constraint checks against a Property definition. Discriminated union on `code`. Replaces ParseIssue.",
+    "oneOf": [
+        { "$ref": "#/$defs/TooSmallPropertyIssue" },
+        { "$ref": "#/$defs/TooBigPropertyIssue" },
+        { "$ref": "#/$defs/InvalidTypePropertyIssue" },
+        { "$ref": "#/$defs/InvalidEnumPropertyIssue" },
+        { "$ref": "#/$defs/InvalidPatternPropertyIssue" },
+        { "$ref": "#/$defs/InvalidJsonPropertyIssue" }
+    ],
+    "$defs": {
+        "IssuePathSegment": {
+            "description": "One segment in a value path. String keys for object properties; non-negative integers for array indices.",
+            "oneOf": [
+                { "type": "string" },
+                { "type": "integer", "minimum": 0 }
+            ]
+        },
+        "PropertyIssueBase": {
+            "title": "PropertyIssueBase",
+            "description": "Common fields shared by all property validation issues.",
+            "type": "object",
+            "required": ["path", "message"],
+            "properties": {
+                "code": {
+                    "description": "Discriminator. Required on concrete issue variants.",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "Path to the failing value within the submitted input.",
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/IssuePathSegment" }
+                },
+                "message": {
+                    "description": "Human-readable text or message key (e.g. validation.number.minimum).",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "input": {
+                    "description": "The value (or raw input) that failed validation.",
+                    "type": ["boolean", "integer", "number", "string", "array", "object", "null"]
+                }
+            },
+            "additionalProperties": false
+        },
+        "TooSmallPropertyIssue": {
+            "title": "TooSmallPropertyIssue",
+            "description": "Value is below a minimum bound (number, string length, or array length).",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "origin", "minimum", "input"],
+                    "properties": {
+                        "code": { "const": "too_small" },
+                        "origin": {
+                            "type": "string",
+                            "enum": ["number", "string", "array"]
+                        },
+                        "minimum": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "TooBigPropertyIssue": {
+            "title": "TooBigPropertyIssue",
+            "description": "Value exceeds a maximum bound (number, string length, or array length).",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "origin", "maximum", "input"],
+                    "properties": {
+                        "code": { "const": "too_big" },
+                        "origin": {
+                            "type": "string",
+                            "enum": ["number", "string", "array"]
+                        },
+                        "maximum": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "InvalidTypePropertyIssue": {
+            "title": "InvalidTypePropertyIssue",
+            "description": "Input is not of the expected type.",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "expected", "input"],
+                    "properties": {
+                        "code": { "const": "invalid_type" },
+                        "expected": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "InvalidEnumPropertyIssue": {
+            "title": "InvalidEnumPropertyIssue",
+            "description": "Input is not one of the allowed enum values.",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "options", "input"],
+                    "properties": {
+                        "code": { "const": "invalid_enum" },
+                        "options": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": ["boolean", "integer", "number", "string", "array", "object", "null"]
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "InvalidPatternPropertyIssue": {
+            "title": "InvalidPatternPropertyIssue",
+            "description": "String input does not match the required pattern.",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "pattern", "input"],
+                    "properties": {
+                        "code": { "const": "invalid_pattern" },
+                        "pattern": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "InvalidJsonPropertyIssue": {
+            "title": "InvalidJsonPropertyIssue",
+            "description": "Input is not valid JSON for an object or array property.",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "input"],
+                    "properties": {
+                        "code": { "const": "invalid_json" }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        }
+    }
+}

@@ -1,11 +1,11 @@
-import { parseSafe, resolveAtScope, type Diagnostic, type ParseIssue, type PreferenceState, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
+import { safeParse, resolveAtScope, type Diagnostic, type PropertyIssue, type PreferenceState, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeHandler, RegisterElement } from '../types';
 
 
 export type EditorError =
-    | { kind: 'parse'; issues: ParseIssue[]; message: string; rawValue: string }
+    | { kind: 'parse'; issues: PropertyIssue[]; message: string; rawValue: string }
     | { kind: 'commit'; message: string; rawValue: string };
 
 export type EditorErrors = Record<Scope, Record<PropertyKey, EditorError>>;
@@ -225,7 +225,7 @@ async function runCommit(params: {
         return;
     }
 
-    const result = parseSafe(property, value);
+    const result = safeParse(property, value);
     if (!result.success) {
         setErrors((current) => setErrorEntry(current, cfg.scope, key, {
             kind: 'parse',

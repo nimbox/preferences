@@ -1,6 +1,6 @@
 {
   "name": "@nimbox/preferences",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "generate": "json2ts -i ../../../spec/property.schema.json -o ./src/generated/property.ts --cwd ../../../spec && json2ts -i ../../../spec/messages.schema.json -o ./src/generated/messages.ts --cwd ../../../spec && json2ts -i ../../../spec/values.schema.json -o ./src/generated/values.ts --cwd ../../../spec",
+    "generate": "json2ts -i ../../../spec/property.schema.json -o ./src/generated/property.ts --cwd ../../../spec && json2ts -i ../../../spec/messages.schema.json -o ./src/generated/messages.ts --cwd ../../../spec && json2ts -i ../../../spec/values.schema.json -o ./src/generated/values.ts --cwd ../../../spec && json2ts -i ../../../spec/issue.schema.json -o ./src/generated/issue.ts --cwd ../../../spec",
     "build": "npm run generate && rm -rf dist && rollup -c && npm run build:types",
     "build:types": "tsc -p ./tsconfig.types.json",
     "build:watch": "rm -rf dist && rollup -cw",
