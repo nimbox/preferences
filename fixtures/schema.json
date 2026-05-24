@@ -1,4 +1,5 @@
 {
+    "$schema": "https://schemas.nimbox.com/preferences/v1/schema.schema.json",
     "editor.theme.mode": {
         "type": "string",
         "scope": "system",

@@ -15,6 +15,7 @@ jobs:
       source_ref: ${{ github.sha }}
       commit_message: ${{ github.sha }}
       mappings: |
+        spec/schema.schema.json:preferences/v1/schema.schema.json
         spec/property.schema.json:preferences/v1/property.schema.json
         spec/messages.schema.json:preferences/v1/messages.schema.json
         spec/values.schema.json:preferences/v1/values.schema.json

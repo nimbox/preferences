@@ -1,0 +1,13 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.nimbox.com/preferences/v1/schema.schema.json",
+    "title": "Schema",
+    "description": "Flat map from property key to Property. See docs/specification.md.",
+    "type": "object",
+    "propertyNames": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]*(?:\\.[A-Za-z][A-Za-z0-9_-]+)+$"
+    },
+    "additionalProperties": {
+        "$ref": "https://schemas.nimbox.com/preferences/v1/property.schema.json"
+    }
+}
