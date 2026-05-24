@@ -9,7 +9,7 @@ on:
 
 jobs:
   publish:
-    uses: nimbox/schemas/.github/workflows/publish-schema.yml@main
+    uses: nimbox/schemas/.github/workflows/publish-schema.yaml@main
     with:
       source_repo: nimbox/preferences
       source_ref: ${{ github.sha }}
