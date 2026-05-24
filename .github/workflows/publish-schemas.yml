@@ -1,0 +1,23 @@
+name: Publish schemas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'spec/**'
+      - '.github/workflows/publish-schemas.yml'
+
+jobs:
+  publish:
+    uses: nimbox/schemas/.github/workflows/publish-schema.yml@main
+    with:
+      source_repo: nimbox/preferences
+      source_ref: ${{ github.sha }}
+      commit_message: ${{ github.sha }}
+      mappings: |
+        spec/property.schema.json:preferences/v1/property.schema.json
+        spec/messages.schema.json:preferences/v1/messages.schema.json
+        spec/values.schema.json:preferences/v1/values.schema.json
+        spec/issue.schema.json:preferences/v1/issue.schema.json
+    secrets:
+      SCHEMAS_REPO_TOKEN: ${{ secrets.SCHEMAS_REPO_TOKEN }}
