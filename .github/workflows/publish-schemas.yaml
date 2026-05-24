@@ -1,4 +1,4 @@
-name: Publish schemas
+name: Publish Schemas
 
 on:
   push:
