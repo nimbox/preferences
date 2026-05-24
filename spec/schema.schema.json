@@ -8,6 +8,6 @@
         "pattern": "^[A-Za-z][A-Za-z0-9_-]*(?:\\.[A-Za-z][A-Za-z0-9_-]+)+$"
     },
     "additionalProperties": {
-        "$ref": "https://schemas.nimbox.com/preferences/v1/property.schema.json"
+        "$ref": "./property.schema.json"
     }
 }
