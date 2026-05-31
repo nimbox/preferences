@@ -1,6 +1,0 @@
-{
-    "base.replication.months": null,
-    "ar.dueOffset": 5,
-    "ar.overDueClasses": [0, 15],
-    "ar.email": "diego@gmail.com"
-}
