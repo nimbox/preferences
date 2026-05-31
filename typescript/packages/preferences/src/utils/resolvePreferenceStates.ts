@@ -1,8 +1,9 @@
 import type { Diagnostic, PreferenceState, PropertyKey, Schema, Scope, Values } from '../types';
 import { DiagnosticCode, warning } from './diagnostics';
+import { isPresent } from './scopeValues';
 
 
-export interface ResolveAtScopeResult {
+export interface ResolvePreferenceStatesResult {
 
     state: Record<PropertyKey, PreferenceState>;
     diagnostics: Diagnostic[];
@@ -25,12 +26,12 @@ export interface ResolveAtScopeResult {
 // - `inheritedScope`   scope the inherited value was authored at, or
 //                      `defaultScope` when it falls back to default
 
-export function resolveAtScope(
+export function resolvePreferenceStates(
     scope: Scope,
     scopes: ReadonlyArray<Scope>,
     schema: Schema,
     values: Values
-): ResolveAtScopeResult {
+): ResolvePreferenceStatesResult {
 
     const diagnostics: Diagnostic[] = [];
     const state: Record<PropertyKey, PreferenceState> = {};
@@ -133,15 +134,6 @@ function closestDefined(
 
     return null;
 
-}
-
-
-function isPresent(values: Values, scope: Scope, key: string): boolean {
-    const scopeValues = values[scope];
-    if (!scopeValues || !Object.prototype.hasOwnProperty.call(scopeValues, key)) {
-        return false;
-    }
-    return scopeValues[key] !== null;
 }
 
 

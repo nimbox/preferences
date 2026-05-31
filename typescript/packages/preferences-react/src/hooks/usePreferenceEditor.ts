@@ -1,4 +1,4 @@
-import { safeParse, resolveAtScope, type Diagnostic, type PropertyIssue, type PreferenceState, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
+import { resolvePreferenceStates, safeParse, type Diagnostic, type PreferenceState, type PropertyIssue, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeHandler, RegisterElement } from '../types';
@@ -92,7 +92,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
     });
 
     const { state, diagnostics } = useMemo(() => {
-        return resolveAtScope(scope, scopes, schema, values);
+        return resolvePreferenceStates(scope, scopes, schema, values);
     }, [scope, scopes, schema, values]);
 
     const commit = useCallback((event: { target: RegisterElement }, key: PropertyKey): void => {
