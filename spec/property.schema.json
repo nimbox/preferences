@@ -78,7 +78,7 @@
         },
         { "$ref": "#/$defs/scalarConstraints" }
     ],
-    "additionalProperties": true,
+    "unevaluatedProperties": false,
     "$defs": {
         "item": {
             "title": "PropertyItem",
@@ -199,6 +199,10 @@
                             "type": { "const": "string" }
                         }
                     }
+                },
+                {
+                    "if": { "required": ["patternErrorMessage"] },
+                    "then": { "required": ["pattern"] }
                 }
             ]
 
