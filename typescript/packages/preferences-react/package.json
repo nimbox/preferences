@@ -1,6 +1,6 @@
 {
   "name": "@nimbox/preferences-react",
-  "private": true,
+  "private": false,
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,6 +15,9 @@
     "dist"
   ],
   "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@nimbox"
+  },
   "scripts": {
     "dev": "vite",
     "build": "rm -rf dist && rollup -c && npm run build:types",

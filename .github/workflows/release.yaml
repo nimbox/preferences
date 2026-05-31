@@ -1,0 +1,14 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    uses: nimbox/build-tools/.github/workflows/node-release.yaml@main
+    with:
+      workingDirectory: typescript
+      publishWorkspaces: true
+    secrets: inherit
