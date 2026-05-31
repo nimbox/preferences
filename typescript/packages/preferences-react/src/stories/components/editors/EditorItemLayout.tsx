@@ -2,6 +2,7 @@ import type { PreferenceLeaf, PreferenceState } from '@nimbox/preferences';
 import classNames from 'classnames';
 import type { CSSProperties, ReactNode } from 'react';
 import type { EditorError, UsePreferenceEditorResult } from '../../../hooks/usePreferenceEditor';
+import { OverridableIcon } from '../icons/OverridableIcon';
 import '../styles.css';
 
 
@@ -21,7 +22,7 @@ const inlineLabelStyle: CSSProperties = {
 const headerRowStyle: CSSProperties = {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: '0.5rem'
 };
 
@@ -88,6 +89,7 @@ export function EditorItemLayout(props: EditorItemLayoutProps) {
             >
                 Clear
             </button>
+            <OverridableIcon overridable={item.property.overridable} />
         </div>
     );
 
