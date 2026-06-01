@@ -1,7 +1,7 @@
 {
   "name": "@nimbox/preferences-typescript-workspace",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "UNLICENSED",
   "workspaces": [
     "packages/*"
