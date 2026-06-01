@@ -1,4 +1,4 @@
-import type { PreferenceLeaf, PreferenceState } from '@nimbox/preferences';
+import type { PropertyLeaf, PreferenceState } from '@nimbox/preferences';
 import classNames from 'classnames';
 import type { CSSProperties, ReactNode } from 'react';
 import type { EditorError, UsePreferenceEditorResult } from '../../../hooks/usePreferenceEditor';
@@ -38,7 +38,7 @@ export type EditorItemLayoutVariant = 'default' | 'inline';
 
 export interface EditorItemProps {
 
-    item: PreferenceLeaf;
+    item: PropertyLeaf;
     breadcrumbs: string[];
 
     register: UsePreferenceEditorResult['register'];

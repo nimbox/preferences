@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { DiagnosticCode } from '../diagnostics';
-import type { Diagnostic, PreferenceGroup, PreferenceLeaf, PreferenceNode, Property, Scope, Schema } from '../types';
-import { buildPreferenceTree } from './buildPreferenceTree';
+import type { Diagnostic, PropertyGroup, PropertyLeaf, PropertyNode, Property, Scope, Schema } from '../types';
+import { buildPropertyTree } from './buildPropertyTree';
 
 
 function prop(opts: {
@@ -26,21 +26,21 @@ function prop(opts: {
 
 // Narrowing helpers — throw (rather than return undefined) so a wrong
 // node kind fails the test with a clear message.
-function asGroup(node: PreferenceNode | undefined): PreferenceGroup {
+function asGroup(node: PropertyNode | undefined): PropertyGroup {
     if (!node || node.kind !== 'group') {
         throw new Error(`expected a group node, got ${node?.kind ?? 'undefined'}`);
     }
     return node;
 }
 
-function asLeaf(node: PreferenceNode | undefined): PreferenceLeaf {
+function asLeaf(node: PropertyNode | undefined): PropertyLeaf {
     if (!node || node.kind !== 'leaf') {
         throw new Error(`expected a leaf node, got ${node?.kind ?? 'undefined'}`);
     }
     return node;
 }
 
-function keysOf(nodes: ReadonlyArray<PreferenceNode>): string[] {
+function keysOf(nodes: ReadonlyArray<PropertyNode>): string[] {
     return nodes.map((n) => n.key);
 }
 
@@ -53,11 +53,11 @@ function byCode(diagnostics: ReadonlyArray<Diagnostic>, code: string): Diagnosti
 // Group derivation and titles
 // =============================================================================
 
-describe('buildPreferenceTree — grouping and titles', () => {
+describe('buildPropertyTree — grouping and titles', () => {
 
     it('derives a group from a dotted key and humanizes titles without messages', () => {
         const schema: Schema = { 'window.title': prop() };
-        const { tree, diagnostics } = buildPreferenceTree(schema, undefined);
+        const { tree, diagnostics } = buildPropertyTree(schema, undefined);
 
         expect(diagnostics).toEqual([]);
         expect(tree).toHaveLength(1);
@@ -75,7 +75,7 @@ describe('buildPreferenceTree — grouping and titles', () => {
 
     it('nests groups for keys deeper than two segments', () => {
         const schema: Schema = { 'a.b.c.d': prop() };
-        const { tree } = buildPreferenceTree(schema, undefined);
+        const { tree } = buildPropertyTree(schema, undefined);
 
         const a = asGroup(tree[0]);
         expect([a.key, a.title]).toEqual(['a', 'A']);
@@ -93,7 +93,7 @@ describe('buildPreferenceTree — grouping and titles', () => {
 
     it('places multiple leaves under a single shared group', () => {
         const schema: Schema = { 'm.apple': prop(), 'm.zebra': prop() };
-        const { tree } = buildPreferenceTree(schema, undefined);
+        const { tree } = buildPropertyTree(schema, undefined);
 
         expect(tree).toHaveLength(1);
         const group = asGroup(tree[0]);
@@ -103,7 +103,7 @@ describe('buildPreferenceTree — grouping and titles', () => {
     it('uses messages for group and leaf titles when provided', () => {
         const schema: Schema = { 'window.title': prop() };
         const messages = { window: 'Window Pane', 'window.title': 'The Title' };
-        const { tree } = buildPreferenceTree(schema, messages);
+        const { tree } = buildPropertyTree(schema, messages);
 
         const group = asGroup(tree[0]);
         expect(group.title).toBe('Window Pane');
@@ -117,12 +117,12 @@ describe('buildPreferenceTree — grouping and titles', () => {
 // Localization of leaf property fields
 // =============================================================================
 
-describe('buildPreferenceTree — leaf property localization', () => {
+describe('buildPropertyTree — leaf property localization', () => {
 
     it('interpolates %key% references in the leaf property description', () => {
         const schema: Schema = { 'a.b': prop({ description: '%desc.k%' }) };
         const messages = { 'desc.k': 'Localized description' };
-        const { tree } = buildPreferenceTree(schema, messages);
+        const { tree } = buildPropertyTree(schema, messages);
 
         const leaf = asLeaf(asGroup(tree[0]).children[0]);
         expect(leaf.property.description).toBe('Localized description');
@@ -130,7 +130,7 @@ describe('buildPreferenceTree — leaf property localization', () => {
 
     it('passes literal (non-reference) descriptions through unchanged', () => {
         const schema: Schema = { 'a.b': prop({ description: 'Plain text' }) };
-        const { tree } = buildPreferenceTree(schema, {});
+        const { tree } = buildPropertyTree(schema, {});
 
         const leaf = asLeaf(asGroup(tree[0]).children[0]);
         expect(leaf.property.description).toBe('Plain text');
@@ -143,11 +143,11 @@ describe('buildPreferenceTree — leaf property localization', () => {
 // Ordering — explicit order, alphabetical fallback, minOrder propagation
 // =============================================================================
 
-describe('buildPreferenceTree — ordering', () => {
+describe('buildPropertyTree — ordering', () => {
 
     it('sorts siblings alphabetically by title when no order is given', () => {
         const schema: Schema = { 'm.zebra': prop(), 'm.apple': prop() };
-        const { tree } = buildPreferenceTree(schema, undefined);
+        const { tree } = buildPropertyTree(schema, undefined);
         expect(keysOf(asGroup(tree[0]).children)).toEqual(['m.apple', 'm.zebra']);
     });
 
@@ -156,7 +156,7 @@ describe('buildPreferenceTree — ordering', () => {
             'm.apple': prop({ order: 2 }),
             'm.zebra': prop({ order: 1 })
         };
-        const { tree } = buildPreferenceTree(schema, undefined);
+        const { tree } = buildPropertyTree(schema, undefined);
         expect(keysOf(asGroup(tree[0]).children)).toEqual(['m.zebra', 'm.apple']);
     });
 
@@ -165,7 +165,7 @@ describe('buildPreferenceTree — ordering', () => {
             'a.leaf': prop({ order: 10 }),
             'b.leaf': prop({ order: 5 })
         };
-        const { tree } = buildPreferenceTree(schema, undefined);
+        const { tree } = buildPropertyTree(schema, undefined);
         // Group 'b' (minOrder 5) precedes 'a' (minOrder 10) despite a<b.
         expect(keysOf(tree)).toEqual(['b', 'a']);
     });
@@ -173,7 +173,7 @@ describe('buildPreferenceTree — ordering', () => {
     it('breaks ties on equal order and title by key', () => {
         const schema: Schema = { 'g.x': prop(), 'g.y': prop() };
         const messages = { 'g.x': 'Same', 'g.y': 'Same' };
-        const { tree } = buildPreferenceTree(schema, messages);
+        const { tree } = buildPropertyTree(schema, messages);
         expect(keysOf(asGroup(tree[0]).children)).toEqual(['g.x', 'g.y']);
     });
 
@@ -184,7 +184,7 @@ describe('buildPreferenceTree — ordering', () => {
 // Scope visibility
 // =============================================================================
 
-describe('buildPreferenceTree — scope visibility', () => {
+describe('buildPropertyTree — scope visibility', () => {
 
     const scopes: Scope[] = ['system', 'global', 'user'];
 
@@ -197,7 +197,7 @@ describe('buildPreferenceTree — scope visibility', () => {
         };
 
         // Viewed at 'user': own-scope 'g.usr' + overridable-upstream 'g.glob'.
-        const { tree } = buildPreferenceTree(schema, undefined, { scope: 'user', scopes });
+        const { tree } = buildPropertyTree(schema, undefined, { scope: 'user', scopes });
         expect(keysOf(asGroup(tree[0]).children)).toEqual(['g.glob', 'g.usr']);
     });
 
@@ -211,7 +211,7 @@ describe('buildPreferenceTree — scope visibility', () => {
 
         // Viewed at 'global': own-scope global props; system upstream is
         // non-overridable (excluded); user is downstream (excluded).
-        const { tree } = buildPreferenceTree(schema, undefined, { scope: 'global', scopes });
+        const { tree } = buildPropertyTree(schema, undefined, { scope: 'global', scopes });
         expect(keysOf(asGroup(tree[0]).children)).toEqual(['g.glob', 'g.globNo']);
     });
 
@@ -220,13 +220,13 @@ describe('buildPreferenceTree — scope visibility', () => {
             'a.usr': prop({ scope: 'user' }),
             'b.sys': prop({ scope: 'system' })
         };
-        const { tree } = buildPreferenceTree(schema, undefined, { scope: 'system', scopes });
+        const { tree } = buildPropertyTree(schema, undefined, { scope: 'system', scopes });
         expect(keysOf(tree)).toEqual(['b']);
     });
 
     it('silently excludes properties whose scope is not in the list (no diagnostic)', () => {
         const schema: Schema = { 'a.ghost': prop({ scope: 'ghost' }) };
-        const { tree, diagnostics } = buildPreferenceTree(schema, undefined, { scope: 'user', scopes });
+        const { tree, diagnostics } = buildPropertyTree(schema, undefined, { scope: 'user', scopes });
         expect(tree).toEqual([]);
         expect(diagnostics).toEqual([]);
     });
@@ -236,7 +236,7 @@ describe('buildPreferenceTree — scope visibility', () => {
             'a.x': prop({ scope: 'system' }),
             'b.y': prop({ scope: 'user' })
         };
-        const { tree } = buildPreferenceTree(schema, undefined, { scope: 'ghost', scopes });
+        const { tree } = buildPropertyTree(schema, undefined, { scope: 'ghost', scopes });
         expect(keysOf(tree)).toEqual(['a', 'b']);
     });
 
@@ -245,7 +245,7 @@ describe('buildPreferenceTree — scope visibility', () => {
             'a.x': prop({ scope: 'system' }),
             'b.y': prop({ scope: 'user' })
         };
-        const { tree } = buildPreferenceTree(schema, undefined);
+        const { tree } = buildPropertyTree(schema, undefined);
         expect(keysOf(tree)).toEqual(['a', 'b']);
     });
 
@@ -256,11 +256,11 @@ describe('buildPreferenceTree — scope visibility', () => {
 // Custom filter predicate
 // =============================================================================
 
-describe('buildPreferenceTree — filter', () => {
+describe('buildPropertyTree — filter', () => {
 
     it('drops properties the filter rejects', () => {
         const schema: Schema = { 'a.keep': prop(), 'a.drop': prop() };
-        const { tree } = buildPreferenceTree(schema, undefined, {
+        const { tree } = buildPropertyTree(schema, undefined, {
             filter: (key) => key.endsWith('keep')
         });
         expect(keysOf(asGroup(tree[0]).children)).toEqual(['a.keep']);
@@ -268,7 +268,7 @@ describe('buildPreferenceTree — filter', () => {
 
     it('removes groups left empty by the filter', () => {
         const schema: Schema = { 'g.x': prop(), 'h.y': prop() };
-        const { tree } = buildPreferenceTree(schema, undefined, {
+        const { tree } = buildPropertyTree(schema, undefined, {
             filter: (key) => key.startsWith('h')
         });
         expect(keysOf(tree)).toEqual(['h']);
@@ -281,11 +281,11 @@ describe('buildPreferenceTree — filter', () => {
 // Diagnostics and translator options
 // =============================================================================
 
-describe('buildPreferenceTree — diagnostics and onMissing', () => {
+describe('buildPropertyTree — diagnostics and onMissing', () => {
 
     it('warns about and skips a property key with fewer than two segments', () => {
         const schema: Schema = { single: prop(), 'a.b': prop() };
-        const { tree, diagnostics } = buildPreferenceTree(schema, undefined);
+        const { tree, diagnostics } = buildPropertyTree(schema, undefined);
 
         expect(keysOf(tree)).toEqual(['a']);
         const warnings = byCode(diagnostics, DiagnosticCode.PROPERTY_KEY_TOO_SHORT);
@@ -296,7 +296,7 @@ describe('buildPreferenceTree — diagnostics and onMissing', () => {
     it('invokes onMissing for structural keys absent from messages', () => {
         const seen: string[] = [];
         const schema: Schema = { 'a.b': prop() };
-        buildPreferenceTree(schema, undefined, { onMissing: (key) => seen.push(key) });
+        buildPropertyTree(schema, undefined, { onMissing: (key) => seen.push(key) });
         expect(seen).toEqual(['a', 'a.b']);
     });
 
@@ -304,7 +304,7 @@ describe('buildPreferenceTree — diagnostics and onMissing', () => {
         const seen: string[] = [];
         const schema: Schema = { 'a.b': prop() };
         const messages = { a: 'A group', 'a.b': 'A leaf' };
-        buildPreferenceTree(schema, messages, { onMissing: (key) => seen.push(key) });
+        buildPropertyTree(schema, messages, { onMissing: (key) => seen.push(key) });
         expect(seen).toEqual([]);
     });
 

@@ -79,18 +79,18 @@ export type Preferences = Record<PropertyKey, unknown>;
 
 // Hierarchical display nodes.
 
-export interface PreferenceGroup {
+export interface PropertyGroup {
 
     kind: 'group';
 
     key: PropertyKey;
     title: string;
 
-    children: PreferenceNode[];
+    children: PropertyNode[];
 
 }
 
-export interface PreferenceLeaf {
+export interface PropertyLeaf {
 
     kind: 'leaf';
 
@@ -101,8 +101,8 @@ export interface PreferenceLeaf {
 
 }
 
-export type PreferenceNode = PreferenceGroup | PreferenceLeaf;
-export type PreferenceTree = PreferenceNode[];
+export type PropertyNode = PropertyGroup | PropertyLeaf;
+export type PropertyTree = PropertyNode[];
 
 // Editor-time per-property resolution detail, computed for a single
 // property "as seen at" a selected scope (see `resolvePreferenceStates`).

@@ -1,5 +1,5 @@
 export * from './hooks/usePreferenceEditor';
-export * from './hooks/usePreferenceTree';
+export * from './hooks/usePropertyTree';
 export * from './hooks/useScrollSpy';
 export * from './hooks/useScrollToSection';
 export * from './hooks/useSectionNavigationSync';

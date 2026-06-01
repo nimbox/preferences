@@ -1,11 +1,11 @@
-import type { PreferenceGroup, PreferenceNode, PropertyKey } from '@nimbox/preferences';
+import type { PropertyGroup, PropertyNode, PropertyKey } from '@nimbox/preferences';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import './styles.css';
 
 
 export interface GroupPaneProps {
-    nodes: PreferenceNode[];
+    nodes: PropertyNode[];
     depth: number;
     activeSectionKey: PropertyKey | null;
     onSectionSelect: (key: PropertyKey) => void;
@@ -17,7 +17,7 @@ export function GroupPane(props: GroupPaneProps) {
     const { nodes, depth, activeSectionKey, onSectionSelect } = props;
 
     const groups = useMemo(
-        () => nodes.filter((n): n is PreferenceGroup => n.kind === 'group'),
+        () => nodes.filter((n): n is PropertyGroup => n.kind === 'group'),
         [nodes]
     );
 
@@ -61,7 +61,7 @@ export function GroupPane(props: GroupPaneProps) {
 
 
 interface GroupRowProps {
-    group: PreferenceGroup;
+    group: PropertyGroup;
     level: number;
     depth: number;
     isExpanded: (key: PropertyKey) => boolean;

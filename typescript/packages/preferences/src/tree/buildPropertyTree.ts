@@ -1,11 +1,11 @@
-import type { Diagnostic, Messages, PreferenceGroup, PreferenceLeaf, PreferenceNode, PreferenceTree, Property, Schema, Scope } from '../types';
+import type { Diagnostic, Messages, PropertyGroup, PropertyLeaf, PropertyNode, PropertyTree, Property, Schema, Scope } from '../types';
 import { DiagnosticCode, warning } from '../diagnostics';
 import type { PropertyFilter } from './filter';
 import { localizeSchema } from '../messages/localize';
 import { createTranslator, type Translator, type TranslatorOptions } from '../messages/translator';
 
 
-export interface BuildPreferenceTreeOptions extends TranslatorOptions {
+export interface BuildPropertyTreeOptions extends TranslatorOptions {
 
     // When set, only properties visible at this scope are included
     // (owning scope, plus downstream scopes for `overridable: true`
@@ -23,9 +23,9 @@ export interface BuildPreferenceTreeOptions extends TranslatorOptions {
 
 }
 
-export interface BuildPreferenceTreeResult {
+export interface BuildPropertyTreeResult {
 
-    tree: PreferenceTree;
+    tree: PropertyTree;
     diagnostics: Diagnostic[];
 
 }
@@ -49,11 +49,11 @@ export interface BuildPreferenceTreeResult {
  * @returns The localized tree and any diagnostics produced while
  * building it.
  */
-export function buildPreferenceTree(
+export function buildPropertyTree(
     schema: Schema,
     messages: Messages | undefined,
-    options: BuildPreferenceTreeOptions = {}
-): BuildPreferenceTreeResult {
+    options: BuildPropertyTreeOptions = {}
+): BuildPropertyTreeResult {
 
     const { scope, scopes, filter, ...translatorOptions } = options;
 
@@ -90,7 +90,7 @@ export function buildPreferenceTree(
         const groupPath = ensureGroupPath(root, groupSegments, translator);
 
         const parent = groupPath[groupPath.length - 1] ?? root;
-        const leaf: PreferenceLeaf = {
+        const leaf: PropertyLeaf = {
             kind: 'leaf',
             key,
             title: translator.lookup(key),
@@ -120,7 +120,7 @@ interface MutableGroup {
     minOrder: number;
 
     groups: Map<string, MutableGroup>;
-    leaves: Array<{ leaf: PreferenceLeaf; order: number }>;
+    leaves: Array<{ leaf: PropertyLeaf; order: number }>;
 
 }
 
@@ -162,12 +162,12 @@ function ensureGroupPath(
 function materializeChildren(
     group: MutableGroup,
     collator: Intl.Collator
-): PreferenceNode[] {
+): PropertyNode[] {
 
-    const children: Array<{ node: PreferenceNode; order: number; title: string; key: string }> = [];
+    const children: Array<{ node: PropertyNode; order: number; title: string; key: string }> = [];
 
     for (const child of group.groups.values()) {
-        const node: PreferenceGroup = {
+        const node: PropertyGroup = {
             kind: 'group',
             key: child.key,
             title: child.title,

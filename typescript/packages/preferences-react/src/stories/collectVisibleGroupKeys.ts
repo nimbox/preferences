@@ -1,11 +1,11 @@
-import type { PreferenceNode, PropertyKey } from '@nimbox/preferences';
+import type { PropertyNode, PropertyKey } from '@nimbox/preferences';
 
 
 /**
  * Collects group keys for which the preferences editor renders a heading
  * (same rules as EditorTree: `level <= depth` when visiting a group).
  */
-export function collectVisibleGroupKeys(nodes: PreferenceNode[], depth: number, level = 0): PropertyKey[] {
+export function collectVisibleGroupKeys(nodes: PropertyNode[], depth: number, level = 0): PropertyKey[] {
 
     const keys: PropertyKey[] = [];
 

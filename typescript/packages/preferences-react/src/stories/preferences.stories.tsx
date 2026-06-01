@@ -6,7 +6,7 @@ import schemaFixture from '../../../../../fixtures/schema.json';
 import scopesFixture from '../../../../../fixtures/scopes.json';
 import valuesFixture from '../../../../../fixtures/values.json';
 import { usePreferenceEditor } from '../hooks/usePreferenceEditor';
-import { usePreferenceTree } from '../hooks/usePreferenceTree';
+import { usePropertyTree } from '../hooks/usePropertyTree';
 import { useSectionNavigationSync } from '../hooks/useSectionNavigationSync';
 import { collectVisibleGroupKeys } from './collectVisibleGroupKeys';
 import { EditorPane } from './components/EditorPane';
@@ -75,7 +75,7 @@ const meta = {
 
         const filter = useMemo(() => createPropertyFilter(query), [query]);
 
-        const { tree } = usePreferenceTree({
+        const { tree } = usePropertyTree({
             schema,
             scope,
             scopes: scopesFixture,

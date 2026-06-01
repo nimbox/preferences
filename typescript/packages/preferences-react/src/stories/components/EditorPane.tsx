@@ -1,4 +1,4 @@
-import type { PreferenceNode } from '@nimbox/preferences';
+import type { PropertyNode } from '@nimbox/preferences';
 import { Fragment } from 'react';
 import type { UsePreferenceEditorResult } from '../../hooks/usePreferenceEditor';
 import { EditorItem } from './EditorItem';
@@ -7,7 +7,7 @@ import './styles.css';
 
 export interface EditorPaneProps {
     scope: string;
-    nodes: PreferenceNode[];
+    nodes: PropertyNode[];
     depth: number;
     register: UsePreferenceEditorResult['register'];
     setValue: UsePreferenceEditorResult['setValue'];
@@ -30,7 +30,7 @@ function Heading(props: {
 }
 
 function EditorTree(props: {
-    nodes: PreferenceNode[];
+    nodes: PropertyNode[];
     level: number;
     scope: string;
     depth: number;
