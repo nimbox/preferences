@@ -38,7 +38,7 @@ Schema **shape** mistakes (broken property definitions on the preference tree it
 
 ## Where issues are emitted
 
-Issues are constructed and returned via **`safeParse`** in [`typescript/packages/preferences/src/utils/parse.ts`](../typescript/packages/preferences/src/utils/parse.ts). On failure:
+Issues are constructed and returned via **`safeParse`** in [`typescript/packages/preferences/src/parse/parse.ts`](../typescript/packages/preferences/src/parse/parse.ts). On failure:
 
 - **`PropertyError`** wraps **`issues: PropertyIssue[]`** (first issue’s message is used for `Error`).
 - Narrowing helpers: **`isPropertyError`**, **`isTooSmallIssue`**, **`isTooBigIssue`**, **`isInvalidTypeIssue`**, **`isInvalidEnumIssue`**, **`isInvalidPatternIssue`**, **`isInvalidJsonIssue`**.

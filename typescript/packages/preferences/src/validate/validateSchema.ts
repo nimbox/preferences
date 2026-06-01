@@ -1,5 +1,5 @@
 import type { Diagnostic, Schema } from '../types';
-import { DiagnosticCode, error } from './diagnostics';
+import { DiagnosticCode, error } from '../diagnostics';
 
 
 export interface ValidateSchemaResult {

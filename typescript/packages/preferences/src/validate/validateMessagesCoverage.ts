@@ -1,6 +1,6 @@
 import type { Diagnostic, Messages, Schema } from '../types';
-import { DiagnosticCode, warning } from './diagnostics';
-import { extractKey, isKeyReference } from './messages';
+import { DiagnosticCode, warning } from '../diagnostics';
+import { extractKey, isKeyReference } from '../messages/messages';
 
 
 // Walks every property's key-or-text fields, every property key (used

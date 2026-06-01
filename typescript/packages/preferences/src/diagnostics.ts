@@ -1,4 +1,4 @@
-import type { Diagnostic } from '../types';
+import type { Diagnostic } from './types';
 
 
 // Stable diagnostic codes. Some are taken verbatim from

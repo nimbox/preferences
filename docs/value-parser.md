@@ -5,7 +5,7 @@ given property. Its input is the kind of value an editor control produces —
 often a raw string from the DOM — and its output is a value of the property's
 declared type, checked against the property's constraints.
 
-Source: [`typescript/packages/preferences/src/utils/parse.ts`](../typescript/packages/preferences/src/utils/parse.ts).
+Source: [`typescript/packages/preferences/src/parse/parse.ts`](../typescript/packages/preferences/src/parse/parse.ts).
 
 ## Two explicit phases
 
@@ -57,7 +57,7 @@ For arrays, a failing element's issue carries its index in `path` (e.g.
 
 `format` is only checked when `formatValidators` is supplied. When it is
 omitted, format is not checked at all — this is how `checkScalarValue` is reused
-by [`validateProperties`](../typescript/packages/preferences/src/utils/validateProperties.ts)
+by [`validateProperties`](../typescript/packages/preferences/src/validate/validateProperties.ts)
 to validate **defaults**, where the value is already typed and format is not
 enforced. When validators are supplied (even `{}`), format is enforced and
 **fails closed**: a declared `format` with no matching validator is treated as
@@ -65,7 +65,7 @@ not passing.
 
 ## Tests
 
-[`parse.test.ts`](../typescript/packages/preferences/src/utils/parse.test.ts)
+[`parse.test.ts`](../typescript/packages/preferences/src/parse/parse.test.ts)
 covers the parser, organized around the two phases — coercion
 (`coerceScalar`), validation (`checkScalarValue`), and end-to-end composition
 (`parse` / `safeParse`). Run with `npm test` from `typescript/`.

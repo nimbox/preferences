@@ -1,5 +1,5 @@
 import type { Diagnostic, Preferences, Schema, Scope, Values } from '../types';
-import { DiagnosticCode, warning } from './diagnostics';
+import { DiagnosticCode, warning } from '../diagnostics';
 import { isPresent, readPresent } from './scopeValues';
 
 

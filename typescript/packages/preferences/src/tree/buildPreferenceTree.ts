@@ -1,8 +1,8 @@
 import type { Diagnostic, Messages, PreferenceGroup, PreferenceLeaf, PreferenceNode, PreferenceTree, Property, Schema, Scope } from '../types';
-import { DiagnosticCode, warning } from './diagnostics';
+import { DiagnosticCode, warning } from '../diagnostics';
 import type { PropertyFilter } from './filter';
-import { localizeSchema } from './localize';
-import { createTranslator, type Translator, type TranslatorOptions } from './translator';
+import { localizeSchema } from '../messages/localize';
+import { createTranslator, type Translator, type TranslatorOptions } from '../messages/translator';
 
 
 export interface BuildPreferenceTreeOptions extends TranslatorOptions {

@@ -1,6 +1,6 @@
 import type { Diagnostic, Property, PropertyItem, ScalarConstraints, Schema } from '../types';
-import { DiagnosticCode, error } from './diagnostics';
-import { checkScalarValue, isInvalidEnumIssue } from './parse';
+import { DiagnosticCode, error } from '../diagnostics';
+import { checkScalarValue, isInvalidEnumIssue } from '../parse/parse';
 
 
 const PROPERTY_TYPES = new Set([
