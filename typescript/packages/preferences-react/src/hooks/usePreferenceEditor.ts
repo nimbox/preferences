@@ -3,6 +3,8 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeHandler, RegisterElement } from '../types';
 
+type RefCallback = (el: RegisterElement | null) => void;
+
 
 export type EditorError =
     | { kind: 'parse'; issues: PropertyIssue[]; message: string; rawValue: string }
@@ -38,6 +40,8 @@ export interface UsePreferenceEditorProps {
 export interface UsePreferenceEditorRegisterResult {
 
     name: PropertyKey;
+
+    ref: RefCallback;
 
     defaultValue: string;
     defaultChecked: boolean;
@@ -105,6 +109,50 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
         return resolvePreferenceStates(scope, scopes, schema, values);
     }, [scope, scopes, schema, values]);
 
+    // Registry of live DOM elements per property key, plus stable
+    // per-key ref callbacks so the callback identity is constant across
+    // renders (a fresh callback each render makes React detach/reattach).
+    const elementRefs = useRef(new Map<PropertyKey, RegisterElement>());
+    const refCallbacks = useRef(new Map<PropertyKey, RefCallback>());
+
+    const getRef = useCallback((key: PropertyKey): RefCallback => {
+        const existing = refCallbacks.current.get(key);
+        if (existing) {
+            return existing;
+        }
+        const callback: RefCallback = (el) => {
+            if (el) {
+                elementRefs.current.set(key, el);
+            } else {
+                elementRefs.current.delete(key);
+            }
+        };
+        refCallbacks.current.set(key, callback);
+        return callback;
+    }, []);
+
+    // Imperatively sync each uncontrolled input's DOM value from the
+    // resolved state whenever state changes (e.g. an external value
+    // update). Skips the focused field and fields with a pending parse
+    // error so we don't clobber an active edit or invalid raw text.
+    useEffect(() => {
+        const currentScope = configRef.current.scope;
+        for (const [key, el] of elementRefs.current) {
+            if (el === document.activeElement) {
+                continue;
+            }
+            if (errors[currentScope]?.[key]) {
+                continue;
+            }
+            const value = states[key]?.value;
+            if (isCheckboxInput(el)) {
+                el.checked = toInputChecked(value);
+            } else {
+                el.value = toInputValue(value);
+            }
+        }
+    }, [states, errors]);
+
     const commit = useCallback((event: { target: RegisterElement }, key: PropertyKey): void => {
         const rawValue = isCheckboxInput(event.target)
             ? String(event.target.checked)
@@ -135,6 +183,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
 
         return {
             name: key,
+            ref: getRef(key),
             defaultValue: toInputValue(sourceValue),
             defaultChecked: toInputChecked(sourceValue),
             onChange: (event) => {
@@ -149,7 +198,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
             }
         };
 
-    }, [errors, states, commit]);
+    }, [errors, states, commit, getRef]);
 
     const reset = useCallback((key: PropertyKey) => {
         setErrors((current) => clearErrorEntry(current, configRef.current.scope, key));

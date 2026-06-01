@@ -1,6 +1,6 @@
 import { createPropertyFilter, type Messages, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import messagesEnFixture from '../../../../../fixtures/messages.en.json';
 import schemaFixture from '../../../../../fixtures/schema.json';
 import scopesFixture from '../../../../../fixtures/scopes.json';
@@ -53,6 +53,25 @@ const meta = {
         const [query, setQuery] = useState('');
         const [scope, setScope] = useState<Scope>('user');
         const [resolvedValues, setResolvedValues] = useState<Values>(valuesFixture as unknown as Values);
+
+        // Editable JSON mirror of `resolvedValues`. Lets us mutate values
+        // directly (the external-update path) to exercise that the editor
+        // fields stay in sync. Commits on blur; reverts on invalid JSON.
+        const [draft, setDraft] = useState(() => JSON.stringify(resolvedValues, null, 4));
+        const draftRef = useRef<HTMLTextAreaElement | null>(null);
+        useEffect(() => {
+            if (draftRef.current === document.activeElement) {
+                return;
+            }
+            setDraft(JSON.stringify(resolvedValues, null, 4));
+        }, [resolvedValues]);
+        const commitDraft = useCallback(() => {
+            try {
+                setResolvedValues(JSON.parse(draft) as Values);
+            } catch {
+                setDraft(JSON.stringify(resolvedValues, null, 4));
+            }
+        }, [draft, resolvedValues]);
 
         const filter = useMemo(() => createPropertyFilter(query), [query]);
 
@@ -161,18 +180,27 @@ const meta = {
                             borderLeft: '1px solid #e5e7eb'
                         }}
                     >
-                        <pre
+                        <textarea
+                            ref={draftRef}
+                            value={draft}
+                            onChange={(event) => setDraft(event.target.value)}
+                            onBlur={commitDraft}
+                            spellCheck={false}
                             style={{
-                                margin: 0,
+                                width: '100%',
+                                height: '100%',
+                                boxSizing: 'border-box',
+                                border: 'none',
+                                resize: 'none',
+                                outline: 'none',
+                                background: 'transparent',
                                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                                 fontSize: 12,
                                 lineHeight: 1.45,
-                                whiteSpace: 'pre-wrap',
+                                whiteSpace: 'pre',
                                 wordBreak: 'break-word'
                             }}
-                        >
-                            {JSON.stringify(resolvedValues, null, 4)}
-                        </pre>
+                        />
                     </div>
 
                 </div>

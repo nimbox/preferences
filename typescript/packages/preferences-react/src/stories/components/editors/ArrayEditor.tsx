@@ -163,6 +163,9 @@ export function ArrayEditor(props: EditorItemProps) {
 
             return {
                 name: `${item.key}[${index}]`,
+                // Array rows re-sync from the resolved value via the
+                // `valueSnapshot` effect, so no imperative ref is needed.
+                ref: () => { },
                 defaultValue: toInputValue(current),
                 defaultChecked: toInputChecked(current),
                 onChange: (event) => {
