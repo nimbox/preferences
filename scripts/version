@@ -10,13 +10,11 @@
 # Freshness + resilience: refetches on every run (so a moving ref like `main`
 # stays current), and falls back to the last cached copy when offline.
 #
-# Deps: git, jq, gh. `gh` must be authenticated with read access to the tool
-# repo — locally via your login, in CI via GH_TOKEN (a token that can read
-# nimbox/build-tools).
+# Deps: git, jq, curl. The tool repo is public, so the fetch needs no auth.
 
 set -euo pipefail
 
-for tool in git jq gh; do
+for tool in git jq curl; do
     command -v "$tool" >/dev/null 2>&1 || { echo "error: $tool is required" >&2; exit 1; }
 done
 
@@ -32,12 +30,13 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nimbox-version"
 mkdir -p "$cache_dir"
 cached="$cache_dir/$(printf '%s/%s/%s' "$repo" "$ref" "$path" | tr '/' '_')"
 
+url="https://raw.githubusercontent.com/${repo}/${ref}/${path}"
 tmp="$(mktemp)"
-if gh api "repos/${repo}/contents/${path}?ref=${ref}" --jq '.content' 2>/dev/null | base64 -d > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+if curl -fsSL "$url" -o "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
     mv "$tmp" "$cached"
 else
     rm -f "$tmp"
-    [ -f "$cached" ] || { echo "error: failed to fetch ${repo}@${ref}:${path} and no cached copy" >&2; exit 1; }
+    [ -f "$cached" ] || { echo "error: failed to fetch ${url} and no cached copy" >&2; exit 1; }
     echo "warning: using cached ${repo}@${ref}:${path} (fetch failed)" >&2
 fi
 
