@@ -78,8 +78,16 @@ function coerce(raw: unknown, itemType: ScalarConstraints['type']): unknown {
 }
 
 
-function defaultElement(itemType: ScalarConstraints['type']): unknown {
-    switch (itemType) {
+function defaultElement(itemConstraints: ScalarConstraints): unknown {
+
+    // Enum items must seed to a valid member; an empty string would
+    // immediately fail enum validation even though the <select> shows
+    // the first option.
+    if (Array.isArray(itemConstraints.enum) && itemConstraints.enum.length > 0) {
+        return itemConstraints.enum[0];
+    }
+
+    switch (itemConstraints.type) {
         case 'boolean': return false;
         case 'integer':
         case 'number': return 0;
@@ -193,7 +201,7 @@ export function ArrayEditor(props: EditorItemProps) {
     };
 
     const handleAdd = () => {
-        const next = [...items, defaultElement(itemType)];
+        const next = [...items, defaultElement(itemConstraints)];
         setItems(next);
         if (isInline) {
             commitItems(next);
