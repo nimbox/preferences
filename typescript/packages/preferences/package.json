@@ -1,6 +1,6 @@
 {
   "name": "@nimbox/preferences",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": false,
   "description": "Schema-driven preference resolution, validation, and localization (framework-agnostic core).",
   "license": "UNLICENSED",

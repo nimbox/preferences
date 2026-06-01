@@ -1,7 +1,7 @@
 {
   "name": "@nimbox/preferences-react",
   "private": false,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "React hooks for building schema-driven preference editors on top of @nimbox/preferences.",
   "license": "UNLICENSED",
   "author": "Ricardo Marimón <ricardo@naiboa.com>",
@@ -46,7 +46,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@nimbox/preferences": "0.1.2"
+    "@nimbox/preferences": "0.1.3"
   },
   "peerDependencies": {
     "react": "^19.2.5",
