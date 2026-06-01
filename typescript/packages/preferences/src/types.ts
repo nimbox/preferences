@@ -104,19 +104,34 @@ export interface PreferenceLeaf {
 export type PreferenceNode = PreferenceGroup | PreferenceLeaf;
 export type PreferenceTree = PreferenceNode[];
 
-// Editor-time per-property resolution detail.
+// Editor-time per-property resolution detail, computed for a single
+// property "as seen at" a selected scope (see `resolvePreferenceStates`).
 
 export interface PreferenceState {
 
+    // Effective value the user sees at the selected scope.
     value: unknown;
 
+    // Whether the selected scope authors its own value for this property.
+    // Only meaningful when the selected scope is editable: the property's
+    // own scope, or a downstream scope when the property is overridable.
     isDefined: boolean;
+
+    // `isDefined` and `value` differs from `inheritedValue`.
     isOverridden: boolean;
 
+    // The value the property would have if the selected scope authored
+    // nothing — i.e. inherited from an upstream scope or the default.
     inheritedValue: unknown;
+
+    // Scope `inheritedValue` was authored at, or `defaultScope` when it
+    // falls back to the default.
     inheritedScope: Scope;
 
+    // The property's schema default value.
     defaultValue: unknown;
+
+    // The scope that owns the property (where its default applies).
     defaultScope: Scope;
 
 }

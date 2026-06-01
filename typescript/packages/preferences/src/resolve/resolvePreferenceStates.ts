@@ -11,20 +11,14 @@ export interface ResolvePreferenceStatesResult {
 }
 
 
-// Computes the editor-time view of every property "as seen at
-// selectedScope". For each property:
+// Computes the editor-time view of every property "as seen at" the
+// selected `scope`: a `PreferenceState` per property key (see that type
+// for per-field semantics). When `scope` is empty or not in `scopes`,
+// the last scope is used.
 //
-// - `value`            effective value the user sees at selectedScope
-// - `isDefined`        whether selectedScope has its own value for this
-//                      property (only meaningful when selectedScope is
-//                      editable: at the property's own scope, or
-//                      downstream when the property is overridable)
-// - `isOverridden`     `isDefined` and the value differs from the
-//                      inherited one
-// - `inheritedValue`   what the value would be if selectedScope did not
-//                      author a value
-// - `inheritedScope`   scope the inherited value was authored at, or
-//                      `defaultScope` when it falls back to default
+// Also returns diagnostics: `UNKNOWN_PROPERTY_SCOPE` for a property whose
+// declared scope is not in `scopes`, and `NON_OVERRIDABLE_OVERRIDE` for a
+// value authored downstream of a non-overridable property.
 
 export function resolvePreferenceStates(
     scope: Scope,
@@ -33,8 +27,8 @@ export function resolvePreferenceStates(
     values: Values
 ): ResolvePreferenceStatesResult {
 
-    const diagnostics: Diagnostic[] = [];
     const states: Record<PropertyKey, PreferenceState> = {};
+    const diagnostics: Diagnostic[] = [];
 
     const selectedScope = scope && scopes.includes(scope)
         ? scope
