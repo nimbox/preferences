@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# version — launcher for the Nimbox versioning tool.
+#
+# For now this simply runs the self-contained `version.sh` next to it. Once the
+# canonical `version.sh` is promoted to nimbox/build-tools, this becomes a thin
+# bootstrap that fetches the pinned canonical script and execs it — the only
+# per-repo footprint besides VERSION and version.json.
+
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$here/version.sh" "$@"

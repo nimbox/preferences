@@ -1,0 +1,10 @@
+{
+  "manifest": "1",
+  "tagPrefix": "v",
+  "targets": [
+    { "file": "typescript/package.json", "type": "json", "path": ".version" },
+    { "file": "typescript/packages/preferences/package.json", "type": "json", "path": ".version" },
+    { "file": "typescript/packages/preferences-react/package.json", "type": "json", "path": ".version" },
+    { "file": "typescript/packages/preferences-react/package.json", "type": "json", "path": ".dependencies[\"@nimbox/preferences\"]" }
+  ]
+}
