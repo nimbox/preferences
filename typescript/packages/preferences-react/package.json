@@ -16,7 +16,7 @@
   ],
   "sideEffects": false,
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/@nimbox"
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "dev": "vite",
