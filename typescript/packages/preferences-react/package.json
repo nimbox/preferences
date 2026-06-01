@@ -2,6 +2,22 @@
   "name": "@nimbox/preferences-react",
   "private": false,
   "version": "0.1.0",
+  "description": "React hooks for building schema-driven preference editors on top of @nimbox/preferences.",
+  "license": "UNLICENSED",
+  "author": "Ricardo Marimón <ricardo@naiboa.com>",
+  "homepage": "https://github.com/nimbox/preferences#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimbox/preferences.git",
+    "directory": "typescript/packages/preferences-react"
+  },
+  "keywords": [
+    "preferences",
+    "settings",
+    "configuration",
+    "react",
+    "hooks"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

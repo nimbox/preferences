@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# @nimbox/preferences-react
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React **hooks** for building schema-driven preference editors on top of
+[`@nimbox/preferences`](../preferences). This package ships hooks only — it
+brings the resolution/validation state into React and leaves the markup and
+styling to you.
 
-Currently, two official plugins are available:
+> Proprietary — see [LICENSE](../../../LICENSE). Internal Nimbox use only.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Install
 
-## React Compiler
+Published to GitHub Packages under the `@nimbox` scope. Configure your
+`.npmrc` to resolve the scope from GitHub Packages:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+@nimbox:registry=https://npm.pkg.github.com
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+```bash
+npm install @nimbox/preferences-react @nimbox/preferences
+```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`react` and `react-dom` are peer dependencies.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Hooks
+
+- `usePreferenceEditor` — the editor engine: resolves per-property state,
+  tracks parse/commit errors, and exposes `register`, `setValue`, `clear`,
+  and `reset` for wiring uncontrolled inputs to a scope's values.
+- `usePropertyTree` — builds the localized, hierarchical property tree for
+  rendering grouped sections.
+- `useScrollSpy`, `useScrollToSection`, `useSectionNavigationSync`,
+  `useSectionRegistry` — helpers for section navigation in a long editor.
+
+## Usage
+
+```tsx
+import { usePreferenceEditor } from '@nimbox/preferences-react';
+
+function FontSizeField({ schema, values, onChange }) {
+  const { register } = usePreferenceEditor({
+    scope: 'user',
+    scopes: ['system', 'user'],
+    schema,
+    values,
+    onChange // (scope, key, value) => Promise<void>
+  });
+
+  return <input type="number" {...register('editor.fontSize')} />;
+}
+```
+
+See `src/stories/` for a full editor composed from these hooks (run via
+Storybook).
+
+## Develop
+
+From the repository's `typescript/` directory:
+
+```bash
+npm run build
+npm run typecheck
+cd packages/preferences-react && npm run storybook
 ```

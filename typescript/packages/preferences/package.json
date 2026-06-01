@@ -2,6 +2,22 @@
   "name": "@nimbox/preferences",
   "version": "0.1.0",
   "private": false,
+  "description": "Schema-driven preference resolution, validation, and localization (framework-agnostic core).",
+  "license": "UNLICENSED",
+  "author": "Ricardo Marimón <ricardo@naiboa.com>",
+  "homepage": "https://github.com/nimbox/preferences#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimbox/preferences.git",
+    "directory": "typescript/packages/preferences"
+  },
+  "keywords": [
+    "preferences",
+    "settings",
+    "configuration",
+    "schema",
+    "json-schema"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

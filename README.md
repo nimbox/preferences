@@ -1,60 +1,65 @@
-# js-react-configuration
+# @nimbox/preferences
 
-This library provides the foundation for schema-driven configuration and preference editing.
+A schema-driven preference management library. Define preferences once as a
+**schema**, assign values per **scope**, and resolve them — by merge order —
+into the effective settings your app reads. Includes validation, value
+parsing, localization, and React hooks for building an editor UI.
 
-The core model is:
+> Proprietary software — see [LICENSE](LICENSE). Internal Nimbox use only.
 
-- **Configuration**: a set of property definitions (no runtime values)
-- **Property**: one definition with type, constraints, localization, and merge metadata
-- **Preferences**: runtime values for those properties
+## The model
 
-## Merge-order model
+- **Schema** — property *definitions*: each property has a `type`, an owning
+  `scope`, an `overridable` flag, an optional `default`, constraints, and
+  localization keys. No values.
+- **Values** — per-scope *assignments* of values to properties.
+- **Preferences** — the *resolved values* produced from a schema and values
+  for a given, ordered list of scopes.
 
-A common profile is an ordered set of scopes:
+### Merge-order resolution
+
+Scopes are an ordered list, e.g.:
 
 1. `system`
 2. `global`
 3. `application`
 4. `user`
 
-Values are resolved by merge order (downstream overrides upstream when allowed by property rules like `overridable`).
+A property's owning `scope` is where resolution begins. When a property is
+`overridable`, scopes *downstream* of the owner may replace its value;
+otherwise the owner's value is locked. These scope names are just an example —
+host applications define their own ordered scope list and authorization rules.
 
-Important: these scope names are an example profile, not a hard requirement of the library.  
-The library is designed so host applications can define their own ordered scope list and authorization logic.
+## Packages
 
-## More details
+The TypeScript packages live under [`typescript/`](typescript) (an npm
+workspace) and publish to GitHub Packages under the `@nimbox` scope:
 
-- Main specification: `docs/configuration-spec.md`
-- Legacy notes: `docs/configuration.md`
+| Package | Description |
+| --- | --- |
+| [`@nimbox/preferences`](typescript/packages/preferences) | Framework-agnostic core: resolution, validation, parsing, localization. |
+| [`@nimbox/preferences-react`](typescript/packages/preferences-react) | React hooks for building schema-driven preference editors. |
 
-## TypeScript workspace
+The canonical JSON Schemas live in [`spec/`](spec) and are published to an
+external schemas repository by CI on changes under `spec/`.
 
-The TypeScript packages live in `typescript/`.
+## Getting started
 
-First-time setup:
+All commands run from `typescript/`:
 
 ```bash
 cd typescript
 npm install
-```
-
-Generate types for `@nimbox/preferences` from `spec/property.schema.json`:
-
-```bash
-cd typescript
-npm run generate
-```
-
-Generated files are written to:
-
-- `typescript/packages/preferences/src/generated/*.ts`
-- `typescript/packages/preferences/src/generated/index.ts`
-
-Other useful commands:
-
-```bash
-cd typescript
+npm run generate    # regenerate TS types from spec/*.schema.json
+npm run build       # build both packages
 npm run typecheck
-npm run build
+npm test
 ```
 
+## Documentation
+
+- [Specification](docs/specification.md) — the canonical contract.
+- [Value parser](docs/value-parser.md) — coercion and validation rules.
+- [Issues](docs/issues.md) — the `PropertyIssue` / diagnostic model.
+- [Blocks](docs/blocks.md) — how the core source is organized.
+- [Design](docs/design.md) — design notes.
