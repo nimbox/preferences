@@ -1,6 +1,7 @@
 import { DiagnosticCode, warning } from '../diagnostics';
 import type { Diagnostic, PreferenceState, PropertyKey, Schema, Scope, Values } from '../types';
 import { isPresent } from './scopeValues';
+import { valuesAreEqual } from '../utils/valuesAreEqual';
 
 
 export interface ResolvePreferenceStatesResult {
@@ -127,20 +128,5 @@ function closestDefined(
     }
 
     return null;
-
-}
-
-
-function valuesAreEqual(left: unknown, right: unknown): boolean {
-
-    if (Object.is(left, right)) {
-        return true;
-    }
-
-    try {
-        return JSON.stringify(left) === JSON.stringify(right);
-    } catch {
-        return false;
-    }
 
 }
