@@ -56,7 +56,7 @@ export interface UsePreferenceEditorRegisterOptions {
 
 export interface UsePreferenceEditorResult {
 
-    state: Record<PropertyKey, PreferenceState>;
+    states: Record<PropertyKey, PreferenceState>;
     diagnostics: Diagnostic[];
 
     errors: EditorErrors;
@@ -101,7 +101,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
         configRef.current = { scope, scopes, schema, values, onChange, formatValidators };
     });
 
-    const { state, diagnostics } = useMemo(() => {
+    const { states, diagnostics } = useMemo(() => {
         return resolvePreferenceStates(scope, scopes, schema, values);
     }, [scope, scopes, schema, values]);
 
@@ -129,7 +129,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
 
         const cfg = configRef.current;
         const errored = errors[cfg.scope]?.[key];
-        const sourceValue = errored ? errored.rawValue : state[key]?.value;
+        const sourceValue = errored ? errored.rawValue : states[key]?.value;
 
         const mode = options?.mode ?? 'blur';
 
@@ -149,7 +149,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
             }
         };
 
-    }, [errors, state, commit]);
+    }, [errors, states, commit]);
 
     const reset = useCallback((key: PropertyKey) => {
         setErrors((current) => clearErrorEntry(current, configRef.current.scope, key));
@@ -172,7 +172,7 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
     }, []);
 
     return {
-        state,
+        states,
         diagnostics,
         errors,
         register,

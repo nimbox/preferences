@@ -145,7 +145,7 @@ const meta = {
                             register={editor.register}
                             setValue={editor.setValue}
                             clear={editor.clear}
-                            state={editor.state}
+                            states={editor.states}
                             errors={editor.errors}
                             registerSection={registerSection}
                         />

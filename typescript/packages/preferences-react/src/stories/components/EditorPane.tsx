@@ -12,7 +12,7 @@ export interface EditorPaneProps {
     register: UsePreferenceEditorResult['register'];
     setValue: UsePreferenceEditorResult['setValue'];
     clear: UsePreferenceEditorResult['clear'];
-    state: UsePreferenceEditorResult['state'];
+    states: UsePreferenceEditorResult['states'];
     errors: UsePreferenceEditorResult['errors'];
     registerSection?: (sectionId: string, element: HTMLElement | null) => void;
 }
@@ -38,12 +38,12 @@ function EditorTree(props: {
     register: UsePreferenceEditorResult['register'];
     setValue: UsePreferenceEditorResult['setValue'];
     clear: UsePreferenceEditorResult['clear'];
-    state: UsePreferenceEditorResult['state'];
+    states: UsePreferenceEditorResult['states'];
     errors: UsePreferenceEditorResult['errors'];
     registerSection?: (sectionId: string, element: HTMLElement | null) => void;
 }) {
 
-    const { nodes, level, scope, depth, breadcrumbs, register, setValue, clear, state, errors, registerSection } = props;
+    const { nodes, level, scope, depth, breadcrumbs, register, setValue, clear, states, errors, registerSection } = props;
 
     return (
         <>
@@ -64,7 +64,7 @@ function EditorTree(props: {
                                     register={register}
                                     setValue={setValue}
                                     clear={clear}
-                                    state={state}
+                                    states={states}
                                     errors={errors}
                                     registerSection={registerSection}
                                 />
@@ -100,7 +100,7 @@ function EditorTree(props: {
                             register={register}
                             setValue={setValue}
                             clear={clear}
-                            state={state}
+                            states={states}
                             errors={errors}
                             registerSection={registerSection}
                         />
@@ -115,7 +115,7 @@ function EditorTree(props: {
                         register={register}
                         setValue={setValue}
                         clear={clear}
-                        preferenceState={state[node.key]}
+                        preferenceState={states[node.key]}
                         error={errors[scope]?.[node.key]}
                     />
                 );
@@ -127,7 +127,7 @@ function EditorTree(props: {
 
 export function EditorPane(props: EditorPaneProps) {
 
-    const { nodes, scope, depth, register, setValue, clear, state, errors, registerSection } = props;
+    const { nodes, scope, depth, register, setValue, clear, states, errors, registerSection } = props;
 
     return (
         <div className="editor-pane">
@@ -140,7 +140,7 @@ export function EditorPane(props: EditorPaneProps) {
                 register={register}
                 setValue={setValue}
                 clear={clear}
-                state={state}
+                states={states}
                 errors={errors}
                 registerSection={registerSection}
             />

@@ -1,11 +1,11 @@
-import type { Diagnostic, PreferenceState, PropertyKey, Schema, Scope, Values } from '../types';
 import { DiagnosticCode, warning } from '../diagnostics';
+import type { Diagnostic, PreferenceState, PropertyKey, Schema, Scope, Values } from '../types';
 import { isPresent } from './scopeValues';
 
 
 export interface ResolvePreferenceStatesResult {
 
-    state: Record<PropertyKey, PreferenceState>;
+    states: Record<PropertyKey, PreferenceState>;
     diagnostics: Diagnostic[];
 
 }
@@ -34,7 +34,7 @@ export function resolvePreferenceStates(
 ): ResolvePreferenceStatesResult {
 
     const diagnostics: Diagnostic[] = [];
-    const state: Record<PropertyKey, PreferenceState> = {};
+    const states: Record<PropertyKey, PreferenceState> = {};
 
     const selectedScope = scope && scopes.includes(scope)
         ? scope
@@ -58,7 +58,7 @@ export function resolvePreferenceStates(
         const defaultScope = property.scope;
 
         if (selectedScopeIndex < propertyScopeIndex) {
-            state[key] = {
+            states[key] = {
                 value: defaultValue,
                 isDefined: false,
                 isOverridden: false,
@@ -84,7 +84,7 @@ export function resolvePreferenceStates(
         const isDefined = editableHere && isPresent(values, selectedScope, key);
         const isOverridden = isDefined && !valuesAreEqual(value, inheritedValue);
 
-        state[key] = {
+        states[key] = {
             value,
             isDefined,
             isOverridden,
@@ -111,7 +111,7 @@ export function resolvePreferenceStates(
 
     }
 
-    return { state, diagnostics };
+    return { states, diagnostics };
 
 }
 
