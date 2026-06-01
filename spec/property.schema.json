@@ -145,9 +145,10 @@
                     "minLength": 1
                 },
                 "format": {
-                    "description": "Known string format. Valid only when the in-context `type` is `string`.",
+                    "description": "Known string format name, validated at runtime by consumer-supplied validators. Canonical names are date, time, email, ipv4, ipv6, uri, uuid, but any name is allowed. Valid only when the in-context `type` is `string`.",
                     "type": "string",
-                    "enum": ["date", "time", "email", "uri", "ipv4"]
+                    "minLength": 1,
+                    "examples": ["date", "time", "email", "ipv4", "ipv6", "uri", "uuid"]
                 }
             },
             "allOf": [

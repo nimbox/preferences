@@ -33,6 +33,8 @@
     "assistant.hints.enabled": false,
     "workspace.shortcuts": {
       "save": "CmdOrCtrl+Shift+S"
-    }
+    },
+    "profile.startDate": "2026-03-15",
+    "profile.website": "https://nimbox.com"
   }
 }

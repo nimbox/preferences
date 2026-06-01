@@ -1,6 +1,6 @@
+import type { InvalidEnumPropertyIssue, InvalidFormatPropertyIssue, InvalidJsonPropertyIssue, InvalidPatternPropertyIssue, InvalidTypePropertyIssue, IssuePathSegment, PropertyIssue, PropertyIssueBase, TooBigPropertyIssue, TooSmallPropertyIssue } from './generated/issue';
 import type { Messages } from './generated/messages';
 import type { Property, PropertyItem } from './generated/property';
-import type { InvalidEnumPropertyIssue, InvalidJsonPropertyIssue, InvalidPatternPropertyIssue, InvalidTypePropertyIssue, IssuePathSegment, PropertyIssue, PropertyIssueBase, TooBigPropertyIssue, TooSmallPropertyIssue } from './generated/issue';
 import type { Values } from './generated/values';
 
 
@@ -9,6 +9,7 @@ import type { Values } from './generated/values';
 
 export type {
     InvalidEnumPropertyIssue,
+    InvalidFormatPropertyIssue,
     InvalidJsonPropertyIssue,
     InvalidPatternPropertyIssue,
     InvalidTypePropertyIssue,
@@ -22,6 +23,18 @@ export type {
     TooSmallPropertyIssue,
     Values
 };
+
+
+// Runtime validation for a string `format`. Consumers supply one
+// validator per format name; the parser runs it against the string
+// value. The library ships no built-in validators.
+export type FormatValidator = (value: string) => boolean;
+
+
+// The canonical, documented format names. `format` is not restricted
+// to this set — any name is allowed, validated by a consumer-supplied
+// `FormatValidator`. These literals exist for autocomplete and docs.
+export type CanonicalFormat = 'date' | 'time' | 'email' | 'ipv4' | 'ipv6' | 'uri' | 'uuid';
 
 
 // Constraints that apply to a single scalar value. The generated
@@ -48,7 +61,10 @@ export interface ScalarConstraints {
     pattern?: string;
     patternErrorMessage?: string;
 
-    format?: 'date' | 'time' | 'email' | 'uri' | 'ipv4';
+    // Canonical names autocomplete; the `string & {}` arm keeps the
+    // field open to any consumer-defined format without collapsing the
+    // union to `string`.
+    format?: CanonicalFormat | (string & {});
 
 }
 

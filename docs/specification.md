@@ -380,8 +380,14 @@ Valid only when the in-context `type` is `string`:
 - `maxLength`
 - `pattern`
 - `patternErrorMessage`
-- `format` (for known formats like `date`, `time`, `email`, `uri`,
-`ipv4`)
+- `format` (a named string format). The canonical names are `date`, `time`,
+  `email`, `ipv4`, `ipv6`, `uri`, and `uuid`, but `format` is **not** restricted
+  to this set — any name is allowed. `format` is enforced only **at runtime**:
+  the consumer supplies one validator per format name, and a value is checked
+  against the validator for its declared format. A declared `format` with no
+  supplied validator fails (the value is treated as not passing), surfacing an
+  `invalid_format` issue. The Schema Validator does not check `default` against
+  `format`.
 
 ### Array Length Constraints
 
@@ -444,8 +450,9 @@ Default value checks (when `default` is present):
   - `any`: any JSON value.
 - If `enum` exists, `default` is a member of `enum`.
 - `default` satisfies all type-specific constraints declared on the property
-  (`minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `format`,
-  `minItems`, `maxItems`).
+  (`minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `minItems`,
+  `maxItems`). `format` is **not** checked here — it is enforced only at runtime
+  against consumer-supplied validators (see `String Constraints`).
 
 When `default` is absent and no scope authors a value, the property is omitted
 from the resolved `Preferences`. Consumers should treat absence as "not

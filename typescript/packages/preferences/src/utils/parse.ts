@@ -1,5 +1,5 @@
-import type { InvalidEnumPropertyIssue, InvalidJsonPropertyIssue, InvalidPatternPropertyIssue, InvalidTypePropertyIssue, IssuePathSegment, PropertyIssue, PropertyIssueBase, TooBigPropertyIssue, TooSmallPropertyIssue } from '../generated/issue';
-import type { Property, ScalarConstraints } from '../types';
+import type { InvalidEnumPropertyIssue, InvalidFormatPropertyIssue, InvalidJsonPropertyIssue, InvalidPatternPropertyIssue, InvalidTypePropertyIssue, IssuePathSegment, PropertyIssue, PropertyIssueBase, TooBigPropertyIssue, TooSmallPropertyIssue } from '../generated/issue';
+import type { FormatValidator, Property, ScalarConstraints } from '../types';
 
 
 // -----------------------------------------------------------------------------
@@ -18,7 +18,7 @@ export class PropertyError extends Error {
 
 }
 
-export type ParsePropertyValue = (property: Property, value: unknown) => unknown;
+export type ParsePropertyValue = (property: Property, value: unknown, formatValidators?: Record<string, FormatValidator>) => unknown;
 
 export type SafeParseResult =
     | { success: true; data: unknown }
@@ -55,6 +55,11 @@ export function isInvalidPatternIssue(issue: PropertyIssue): issue is InvalidPat
 }
 
 
+export function isInvalidFormatIssue(issue: PropertyIssue): issue is InvalidFormatPropertyIssue {
+    return issue.code === 'invalid_format';
+}
+
+
 export function isInvalidJsonIssue(issue: PropertyIssue): issue is InvalidJsonPropertyIssue {
     return issue.code === 'invalid_json';
 }
@@ -64,9 +69,9 @@ export function isInvalidJsonIssue(issue: PropertyIssue): issue is InvalidJsonPr
 // Entry points: throwing `parse` and `safeParse` dispatcher by property kind
 // -----------------------------------------------------------------------------
 
-export const parse: ParsePropertyValue = (property, value) => {
+export const parse: ParsePropertyValue = (property, value, formatValidators) => {
 
-    const result = safeParse(property, value);
+    const result = safeParse(property, value, formatValidators);
     if (!result.success) {
         throw result.error;
     }
@@ -76,7 +81,7 @@ export const parse: ParsePropertyValue = (property, value) => {
 };
 
 
-export function safeParse(property: Property, value: unknown): SafeParseResult {
+export function safeParse(property: Property, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     switch (property.type) {
 
@@ -84,10 +89,10 @@ export function safeParse(property: Property, value: unknown): SafeParseResult {
         case 'integer':
         case 'number':
         case 'string':
-            return parseScalar(property as ScalarConstraints, value);
+            return parseScalar(property as ScalarConstraints, value, formatValidators);
 
         case 'array':
-            return parseArray(property, value);
+            return parseArray(property, value, formatValidators);
 
         case 'object':
             return parseObject(value);
@@ -115,7 +120,7 @@ export function safeParse(property: Property, value: unknown): SafeParseResult {
  * For default validation (where coercion is not desired) call
  * `checkScalarValue` instead.
  */
-export function parseScalar(constraints: ScalarConstraints, value: unknown): SafeParseResult {
+export function parseScalar(constraints: ScalarConstraints, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     switch (constraints.type) {
 
@@ -129,7 +134,7 @@ export function parseScalar(constraints: ScalarConstraints, value: unknown): Saf
             return parseNumeric(constraints, value, false);
 
         case 'string':
-            return parseString(constraints, value);
+            return parseString(constraints, value, formatValidators);
 
         case 'object':
             return parseObject(value);
@@ -257,6 +262,17 @@ function invalidPattern(params: IssueFields & { pattern: string }): InvalidPatte
 }
 
 
+function invalidFormat(params: IssueFields & { format: string }): InvalidFormatPropertyIssue {
+    return {
+        code: 'invalid_format',
+        format: params.format,
+        path: params.path ?? [],
+        message: params.message,
+        input: toIssueInput(params.input)
+    };
+}
+
+
 function invalidJson(params: IssueFields): InvalidJsonPropertyIssue {
     return {
         code: 'invalid_json',
@@ -369,15 +385,19 @@ function checkNumeric(constraints: ScalarConstraints, parsed: number): SafeParse
 // String
 // -----------------------------------------------------------------------------
 
-function parseString(constraints: ScalarConstraints, value: unknown): SafeParseResult {
+function parseString(constraints: ScalarConstraints, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     const parsed = String(value ?? '');
-    return checkString(constraints, parsed);
+    return checkString(constraints, parsed, formatValidators);
 
 }
 
 
-function checkString(constraints: ScalarConstraints, parsed: string): SafeParseResult {
+// `formatValidators` gates `format` checking: when omitted (e.g. the
+// `checkScalarValue` default-validation path) format is not checked at
+// all. When supplied — even as `{}` — format is enforced: a declared
+// `format` with no matching validator fails closed.
+function checkString(constraints: ScalarConstraints, parsed: string, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     if (typeof constraints.minLength === 'number' && parsed.length < constraints.minLength) {
         return fail(tooSmall({
@@ -408,6 +428,18 @@ function checkString(constraints: ScalarConstraints, parsed: string): SafeParseR
                 pattern: constraints.pattern,
                 input: parsed,
                 message: String(constraints.patternErrorMessage || 'validation.string.pattern')
+            }));
+        }
+    }
+
+    if (formatValidators !== undefined && typeof constraints.format === 'string' && constraints.format.length > 0) {
+        const validator = formatValidators[constraints.format];
+        // Fail closed: an unsupplied validator counts as "did not pass".
+        if (!validator || !validator(parsed)) {
+            return fail(invalidFormat({
+                format: constraints.format,
+                input: parsed,
+                message: 'validation.string.format'
             }));
         }
     }
@@ -443,7 +475,7 @@ function checkEnum(constraints: ScalarConstraints, value: unknown): SafeParseRes
 // Array
 // -----------------------------------------------------------------------------
 
-function parseArray(property: Property, value: unknown): SafeParseResult {
+function parseArray(property: Property, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     let parsed: unknown;
     if (Array.isArray(value)) {
@@ -490,7 +522,7 @@ function parseArray(property: Property, value: unknown): SafeParseResult {
         const result: unknown[] = [];
         for (let index = 0; index < parsed.length; index += 1) {
             const element = parsed[index];
-            const itemResult = parseScalar(itemsAsScalar, element);
+            const itemResult = parseScalar(itemsAsScalar, element, formatValidators);
             if (!itemResult.success) {
                 return {
                     success: false,

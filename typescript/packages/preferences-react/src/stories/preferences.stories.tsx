@@ -22,6 +22,20 @@ type StoryArgs = {
 const schema = schemaFixture as unknown as Schema;
 const messages = messagesEnFixture as unknown as Messages;
 
+// Consumer-supplied format validators. The library ships none; a declared
+// `format` with no matching validator here would fail closed.
+const formatValidators = {
+    date: (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value),
+    uri: (value: string) => {
+        try {
+            new URL(value);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+};
+
 
 const meta = {
     title: 'Preferences/Preferences1',
@@ -55,6 +69,7 @@ const meta = {
             scope,
             scopes: scopesFixture,
             values: resolvedValues,
+            formatValidators,
             onChange: async (nextScope, key, value) => {
                 setResolvedValues((current) => {
                     const scopeValues = { ...(current[nextScope] ?? {}) };

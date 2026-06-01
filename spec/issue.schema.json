@@ -9,6 +9,7 @@
         { "$ref": "#/$defs/InvalidTypePropertyIssue" },
         { "$ref": "#/$defs/InvalidEnumPropertyIssue" },
         { "$ref": "#/$defs/InvalidPatternPropertyIssue" },
+        { "$ref": "#/$defs/InvalidFormatPropertyIssue" },
         { "$ref": "#/$defs/InvalidJsonPropertyIssue" }
     ],
     "$defs": {
@@ -135,6 +136,22 @@
                     "properties": {
                         "code": { "const": "invalid_pattern" },
                         "pattern": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "InvalidFormatPropertyIssue": {
+            "title": "InvalidFormatPropertyIssue",
+            "description": "String input does not satisfy the declared `format` (no validator was supplied for that format, or the supplied validator rejected the value).",
+            "allOf": [
+                { "$ref": "#/$defs/PropertyIssueBase" },
+                {
+                    "type": "object",
+                    "required": ["code", "format", "input"],
+                    "properties": {
+                        "code": { "const": "invalid_format" },
+                        "format": { "type": "string", "minLength": 1 }
                     },
                     "additionalProperties": false
                 }

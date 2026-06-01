@@ -1,4 +1,4 @@
-import { resolvePreferenceStates, safeParse, type Diagnostic, type PreferenceState, type PropertyIssue, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
+import { resolvePreferenceStates, safeParse, type Diagnostic, type FormatValidator, type PreferenceState, type PropertyIssue, type PropertyKey, type Schema, type Scope, type Values } from '@nimbox/preferences';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeHandler, RegisterElement } from '../types';
@@ -24,6 +24,14 @@ export interface UsePreferenceEditorProps {
      * property from the scope map instead of storing `null`.
      */
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
+
+    /**
+     * Per-format validators (`format name → (value) => boolean`) run when
+     * a committed string value declares a `format`. When omitted, `format`
+     * is not enforced; when supplied, a declared `format` with no matching
+     * validator fails closed (the value is treated as invalid).
+     */
+    formatValidators?: Record<string, FormatValidator>;
 
 }
 
@@ -73,12 +81,14 @@ interface EditorConfig {
 
     onChange: (scope: Scope, key: PropertyKey, value: unknown) => Promise<void>;
 
+    formatValidators?: Record<string, FormatValidator>;
+
 }
 
 
 export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePreferenceEditorResult {
 
-    const { schema, scope, scopes, values, onChange } = props;
+    const { schema, scope, scopes, values, onChange, formatValidators } = props;
 
     const [errors, setErrors] = useState<EditorErrors>({});
 
@@ -86,9 +96,9 @@ export function usePreferenceEditor(props: UsePreferenceEditorProps): UsePrefere
     // so async commits never write to a stale scope and so `register`
     // can remain stable across renders.
 
-    const configRef = useRef<EditorConfig>({ scope, scopes, schema, values, onChange });
+    const configRef = useRef<EditorConfig>({ scope, scopes, schema, values, onChange, formatValidators });
     useEffect(() => {
-        configRef.current = { scope, scopes, schema, values, onChange };
+        configRef.current = { scope, scopes, schema, values, onChange, formatValidators };
     });
 
     const { state, diagnostics } = useMemo(() => {
@@ -225,7 +235,7 @@ async function runCommit(params: {
         return;
     }
 
-    const result = safeParse(property, value);
+    const result = safeParse(property, value, cfg.formatValidators);
     if (!result.success) {
         setErrors((current) => setErrorEntry(current, cfg.scope, key, {
             kind: 'parse',

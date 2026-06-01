@@ -44,6 +44,22 @@
         "default": true,
         "description": "%assistant.hints.enabled.description%"
     },
+    "profile.startDate": {
+        "type": "string",
+        "scope": "user",
+        "overridable": false,
+        "format": "date",
+        "default": "2026-01-01",
+        "description": "%profile.startDate.description%"
+    },
+    "profile.website": {
+        "type": "string",
+        "scope": "user",
+        "overridable": false,
+        "format": "uri",
+        "default": "https://example.com",
+        "description": "%profile.website.description%"
+    },
     "workspace.shortcuts": {
         "type": "object",
         "scope": "system",

@@ -14,6 +14,7 @@ export type PropertyIssue =
   | InvalidTypePropertyIssue
   | InvalidEnumPropertyIssue
   | InvalidPatternPropertyIssue
+  | InvalidFormatPropertyIssue
   | InvalidJsonPropertyIssue;
 /**
  * Value is below a minimum bound (number, string length, or array length).
@@ -81,6 +82,13 @@ export type InvalidEnumPropertyIssue = PropertyIssueBase & {
 export type InvalidPatternPropertyIssue = PropertyIssueBase & {
   code: "invalid_pattern";
   pattern: string;
+};
+/**
+ * String input does not satisfy the declared `format` (no validator was supplied for that format, or the supplied validator rejected the value).
+ */
+export type InvalidFormatPropertyIssue = PropertyIssueBase & {
+  code: "invalid_format";
+  format: string;
 };
 /**
  * Input is not valid JSON for an object or array property.
