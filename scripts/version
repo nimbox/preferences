@@ -1,13 +1,44 @@
 #!/usr/bin/env bash
 #
-# version — launcher for the Nimbox versioning tool.
+# version — bootstrap for the Nimbox versioning tool.
 #
-# For now this simply runs the self-contained `version.sh` next to it. Once the
-# canonical `version.sh` is promoted to nimbox/build-tools, this becomes a thin
-# bootstrap that fetches the pinned canonical script and execs it — the only
-# per-repo footprint besides VERSION and version.json.
+# Fetches the canonical version.sh from the repo/ref pinned in version.json's
+# `tool` block and runs it against THIS repo's VERSION + version.json. The repo
+# carries only VERSION, version.json, and this launcher; the logic lives
+# centrally in nimbox/build-tools.
+#
+# Freshness + resilience: refetches on every run (so a moving ref like `main`
+# stays current), and falls back to the last cached copy when offline.
+#
+# Deps: git, jq, gh. `gh` must be authenticated with read access to the tool
+# repo — locally via your login, in CI via GH_TOKEN (a token that can read
+# nimbox/build-tools).
 
 set -euo pipefail
 
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$here/version.sh" "$@"
+for tool in git jq gh; do
+    command -v "$tool" >/dev/null 2>&1 || { echo "error: $tool is required" >&2; exit 1; }
+done
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+[ -f version.json ] || { echo "error: no version.json at repo root ($ROOT)" >&2; exit 1; }
+
+repo="$(jq -r '.tool.repo // "nimbox/build-tools"' version.json)"
+path="$(jq -r '.tool.path // "scripts/version.sh"' version.json)"
+ref="$(jq -r '.tool.ref // "main"' version.json)"
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nimbox-version"
+mkdir -p "$cache_dir"
+cached="$cache_dir/$(printf '%s/%s/%s' "$repo" "$ref" "$path" | tr '/' '_')"
+
+tmp="$(mktemp)"
+if gh api "repos/${repo}/contents/${path}?ref=${ref}" --jq '.content' 2>/dev/null | base64 -d > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    mv "$tmp" "$cached"
+else
+    rm -f "$tmp"
+    [ -f "$cached" ] || { echo "error: failed to fetch ${repo}@${ref}:${path} and no cached copy" >&2; exit 1; }
+    echo "warning: using cached ${repo}@${ref}:${path} (fetch failed)" >&2
+fi
+
+exec bash "$cached" "$@"

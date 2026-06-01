@@ -1,6 +1,11 @@
 {
   "manifest": "1",
   "tagPrefix": "v",
+  "tool": {
+    "repo": "nimbox/build-tools",
+    "path": "scripts/version.sh",
+    "ref": "main"
+  },
   "targets": [
     { "file": "typescript/package.json", "type": "json", "path": ".version" },
     { "file": "typescript/packages/preferences/package.json", "type": "json", "path": ".version" },
