@@ -9,6 +9,7 @@
     "generate": "npm run generate --workspace @nimbox/preferences",
     "build": "npm run build --workspace @nimbox/preferences && npm run build --workspace @nimbox/preferences-react",
     "typecheck": "npm run typecheck --workspace @nimbox/preferences && npm run typecheck --workspace @nimbox/preferences-react",
+    "test": "npm run test --workspace @nimbox/preferences",
     "porcelain": "git status --porcelain -- || (echo 'Uncommitted changes detected' && exit 1)",
     "preversion": "npm ci && npm run build && npm run porcelain",
     "version": "npm version $npm_package_version --workspaces --no-git-tag-version && git add -A",

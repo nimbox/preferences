@@ -94,14 +94,20 @@ export function safeParse(property: Property, value: unknown, formatValidators?:
         case 'array':
             return parseArray(property, value, formatValidators);
 
-        case 'object':
-            return parseObject(value);
+        case 'object': {
+            const coerced = coerceObject(value);
+            return coerced.success ? checkObject(coerced.data) : coerced;
+        }
 
-        case 'any':
-            return parseAny(value);
+        case 'any': {
+            const coerced = coerceAny(value);
+            return coerced.success ? checkAny(coerced.data) : coerced;
+        }
 
-        default:
-            return parseAny(value);
+        default: {
+            const coerced = coerceAny(value);
+            return coerced.success ? checkAny(coerced.data) : coerced;
+        }
 
     }
 
@@ -109,41 +115,71 @@ export function safeParse(property: Property, value: unknown, formatValidators?:
 
 
 // -----------------------------------------------------------------------------
-// Scalar: coercion + validation (`parseScalar`) vs constraint-only (`checkScalarValue`)
+// The two explicit phases
+//
+// Parsing a scalar is two distinct steps, composed by `parseScalar`:
+//
+//   1. Coercion  (`coerceScalar`)  — `unknown` → a value of the declared
+//      type. Coercion may fail with `invalid_type` (e.g. "abc" is not a
+//      number) or `invalid_json` (object/array text that does not parse).
+//
+//   2. Validation (`checkScalarValue`) — checks the typed value against the
+//      scalar constraints (enum, min/max, length, pattern, format). Validation
+//      may fail with `too_small`, `too_big`, `invalid_enum`, `invalid_pattern`,
+//      or `invalid_format`.
+//
+// The two phases map cleanly onto the `PropertyIssue` codes, and either can be
+// run on its own. `coerceScalar` is used at event time where input arrives as
+// strings from the DOM. `checkScalarValue` is reused by `validateProperties`
+// for default validation, where the value is already typed (no coercion) and
+// — by omitting `formatValidators` — format is not checked.
 // -----------------------------------------------------------------------------
 
 /**
- * Coerce `value` to the type declared in `constraints`, then check
- * the scalar constraints (enum, min/max, length, pattern). Used at
- * event time where input values arrive as strings from the DOM.
- *
- * For default validation (where coercion is not desired) call
- * `checkScalarValue` instead.
+ * Coerce `value` to the type declared in `constraints`, then validate it
+ * against the scalar constraints. The full event-time pipeline.
  */
 export function parseScalar(constraints: ScalarConstraints, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
+
+    const coerced = coerceScalar(constraints, value);
+    if (!coerced.success) {
+        return coerced;
+    }
+
+    return checkScalarValue(constraints, coerced.data, formatValidators);
+
+}
+
+
+/**
+ * Phase 1 — coercion. Turn `value` into a value of the type declared in
+ * `constraints`. Performs no constraint checking. May fail with
+ * `invalid_type` or `invalid_json`.
+ */
+export function coerceScalar(constraints: ScalarConstraints, value: unknown): SafeParseResult {
 
     switch (constraints.type) {
 
         case 'boolean':
-            return parseBoolean(value);
+            return coerceBoolean(value);
 
         case 'integer':
-            return parseNumeric(constraints, value, true);
+            return coerceNumeric(value, true);
 
         case 'number':
-            return parseNumeric(constraints, value, false);
+            return coerceNumeric(value, false);
 
         case 'string':
-            return parseString(constraints, value, formatValidators);
+            return coerceString(value);
 
         case 'object':
-            return parseObject(value);
+            return coerceObject(value);
 
         case 'any':
-            return parseAny(value);
+            return coerceAny(value);
 
         default:
-            return parseAny(value);
+            return coerceAny(value);
 
     }
 
@@ -151,11 +187,15 @@ export function parseScalar(constraints: ScalarConstraints, value: unknown, form
 
 
 /**
- * Constraint check that assumes `value` is already of the declared
- * scalar type. Performs only enum/min/max/length/pattern checks; no
- * coercion. Used by `validateDefault` after a strict type check.
+ * Phase 2 — validation. Check `value`, assumed to already be of the declared
+ * scalar type, against the constraints (enum/min/max/length/pattern/format);
+ * no coercion. May fail with `too_small`, `too_big`, `invalid_enum`,
+ * `invalid_pattern`, or `invalid_format`.
+ *
+ * `formatValidators` gates `format` checking: when omitted (the default
+ * validation path used by `validateProperties`) format is not checked at all.
  */
-export function checkScalarValue(constraints: ScalarConstraints, value: unknown): SafeParseResult {
+export function checkScalarValue(constraints: ScalarConstraints, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     switch (constraints.type) {
 
@@ -167,7 +207,7 @@ export function checkScalarValue(constraints: ScalarConstraints, value: unknown)
             return checkNumeric(constraints, value as number);
 
         case 'string':
-            return checkString(constraints, value as string);
+            return checkString(constraints, value as string, formatValidators);
 
         case 'object':
             return checkObject(value);
@@ -295,7 +335,8 @@ function fail(issue: PropertyIssue): SafeParseResult {
 // Boolean
 // -----------------------------------------------------------------------------
 
-function parseBoolean(value: unknown): SafeParseResult {
+// Coercion: any → boolean. Never fails.
+function coerceBoolean(value: unknown): SafeParseResult {
 
     let coerced: boolean;
     if (typeof value === 'boolean') {
@@ -308,11 +349,12 @@ function parseBoolean(value: unknown): SafeParseResult {
         coerced = Boolean(value);
     }
 
-    return checkBoolean(coerced);
+    return { success: true, data: coerced };
 
 }
 
 
+// Validation: booleans carry no constraints.
 function checkBoolean(value: boolean): SafeParseResult {
 
     return { success: true, data: value };
@@ -324,7 +366,10 @@ function checkBoolean(value: boolean): SafeParseResult {
 // Number / integer
 // -----------------------------------------------------------------------------
 
-function parseNumeric(constraints: ScalarConstraints, value: unknown, integer: boolean): SafeParseResult {
+// Coercion: string/unknown → finite number (or integer). Fails with
+// `invalid_type` when the text is empty, non-numeric, or (for integers) not a
+// whole number.
+function coerceNumeric(value: unknown, integer: boolean): SafeParseResult {
 
     const text = String(value ?? '').trim();
     if (!text) {
@@ -352,11 +397,12 @@ function parseNumeric(constraints: ScalarConstraints, value: unknown, integer: b
         }));
     }
 
-    return checkNumeric(constraints, parsed);
+    return { success: true, data: parsed };
 
 }
 
 
+// Validation: numeric range (min/max), then enum membership.
 function checkNumeric(constraints: ScalarConstraints, parsed: number): SafeParseResult {
 
     if (typeof constraints.minimum === 'number' && parsed < constraints.minimum) {
@@ -385,14 +431,15 @@ function checkNumeric(constraints: ScalarConstraints, parsed: number): SafeParse
 // String
 // -----------------------------------------------------------------------------
 
-function parseString(constraints: ScalarConstraints, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
+// Coercion: any → string. Never fails.
+function coerceString(value: unknown): SafeParseResult {
 
-    const parsed = String(value ?? '');
-    return checkString(constraints, parsed, formatValidators);
+    return { success: true, data: String(value ?? '') };
 
 }
 
 
+// Validation: length (min/max), pattern, format, then enum membership.
 // `formatValidators` gates `format` checking: when omitted (e.g. the
 // `checkScalarValue` default-validation path) format is not checked at
 // all. When supplied — even as `{}` — format is enforced: a declared
@@ -477,6 +524,20 @@ function checkEnum(constraints: ScalarConstraints, value: unknown): SafeParseRes
 
 function parseArray(property: Property, value: unknown, formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
+    const coerced = coerceArray(value);
+    if (!coerced.success) {
+        return coerced;
+    }
+
+    return checkArray(property, coerced.data as unknown[], formatValidators);
+
+}
+
+
+// Coercion: array passes through; a string is `JSON.parse`d. Fails with
+// `invalid_json` (text is not JSON) or `invalid_type` (parsed to a non-array).
+function coerceArray(value: unknown): SafeParseResult {
+
     let parsed: unknown;
     if (Array.isArray(value)) {
         parsed = value;
@@ -498,6 +559,15 @@ function parseArray(property: Property, value: unknown, formatValidators?: Recor
             message: 'validation.array.requiredArray'
         }));
     }
+
+    return { success: true, data: parsed };
+
+}
+
+
+// Validation: array length (min/max), then coerce + validate each element
+// against the `items` constraints.
+function checkArray(property: Property, parsed: unknown[], formatValidators?: Record<string, FormatValidator>): SafeParseResult {
 
     if (typeof property.minItems === 'number' && parsed.length < property.minItems) {
         return fail(tooSmall({
@@ -546,10 +616,12 @@ function parseArray(property: Property, value: unknown, formatValidators?: Recor
 // Object
 // -----------------------------------------------------------------------------
 
-function parseObject(value: unknown): SafeParseResult {
+// Coercion: a record passes through; a string is `JSON.parse`d. Fails with
+// `invalid_json` (text is not JSON) or `invalid_type` (parsed to a non-record).
+function coerceObject(value: unknown): SafeParseResult {
 
     if (isRecord(value)) {
-        return checkObject(value);
+        return { success: true, data: value };
     }
 
     try {
@@ -561,7 +633,7 @@ function parseObject(value: unknown): SafeParseResult {
                 message: 'validation.object.requiredObject'
             }));
         }
-        return checkObject(parsed);
+        return { success: true, data: parsed };
     } catch {
         return fail(invalidJson({
             input: value,
@@ -572,6 +644,7 @@ function parseObject(value: unknown): SafeParseResult {
 }
 
 
+// Validation: objects carry no constraints.
 function checkObject(value: unknown): SafeParseResult {
 
     return { success: true, data: value };
@@ -583,14 +656,16 @@ function checkObject(value: unknown): SafeParseResult {
 // Any (optional JSON parse when value is a string)
 // -----------------------------------------------------------------------------
 
-function parseAny(value: unknown): SafeParseResult {
+// Coercion: non-strings pass through unchanged; a string is `JSON.parse`d.
+// Fails with `invalid_json` when the string is not valid JSON.
+function coerceAny(value: unknown): SafeParseResult {
 
     if (typeof value !== 'string') {
-        return checkAny(value);
+        return { success: true, data: value };
     }
 
     try {
-        return checkAny(JSON.parse(value));
+        return { success: true, data: JSON.parse(value) };
     } catch {
         return fail(invalidJson({
             input: value,
@@ -601,6 +676,7 @@ function parseAny(value: unknown): SafeParseResult {
 }
 
 
+// Validation: `any` carries no constraints.
 function checkAny(value: unknown): SafeParseResult {
 
     return { success: true, data: value };

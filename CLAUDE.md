@@ -19,6 +19,10 @@ npm run build
 # Type check both packages
 npm run typecheck
 
+# Run tests (Vitest; core preferences package)
+npm test
+cd packages/preferences && npm run test:watch   # watch mode
+
 # Lint (react package only)
 cd packages/preferences-react && npm run lint
 

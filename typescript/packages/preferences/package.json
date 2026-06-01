@@ -22,7 +22,9 @@
     "build": "npm run generate && rm -rf dist && rollup -c && npm run build:types",
     "build:types": "tsc -p ./tsconfig.types.json",
     "build:watch": "rm -rf dist && rollup -cw",
-    "typecheck": "npm run generate && tsc -p ./tsconfig.json --noEmit"
+    "typecheck": "npm run generate && tsc -p ./tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.0",
@@ -31,6 +33,7 @@
     "json-schema-to-typescript": "^15.0.4",
     "rollup": "^4.55.1",
     "rollup-plugin-filesize": "^10.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
   }
 }

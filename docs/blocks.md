@@ -5,7 +5,9 @@ specification come to life.
 * **Specification** - The specification is the core of the library. It
   defines the schema, the values, and the preferences.
 * **Value Parser** - Parses an object or string into a value for a given
-  property. 
+  property. Runs two explicit phases: **coercion** (turn the input into a
+  value of the declared type) then **validation** (check that typed value
+  against the property's constraints). See [value-parser.md](value-parser.md).
 * **Preferences Resolution** - Merges all the values into a single
   preferences object. 
 * **Schema Validator** - Validates a given schema against the

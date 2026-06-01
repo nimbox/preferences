@@ -6,7 +6,7 @@ export { createPropertyFilter } from './utils/filter';
 export type { PropertyFilter } from './utils/filter';
 export { localizeProperty, localizeSchema } from './utils/localize';
 export { humanizeKey } from './utils/messages';
-export { checkScalarValue, isInvalidEnumIssue, isInvalidFormatIssue, isInvalidJsonIssue, isInvalidPatternIssue, isInvalidTypeIssue, isPropertyError, isTooBigIssue, isTooSmallIssue, parse, parseScalar, PropertyError, safeParse } from './utils/parse';
+export { checkScalarValue, coerceScalar, isInvalidEnumIssue, isInvalidFormatIssue, isInvalidJsonIssue, isInvalidPatternIssue, isInvalidTypeIssue, isPropertyError, isTooBigIssue, isTooSmallIssue, parse, parseScalar, PropertyError, safeParse } from './utils/parse';
 export type { ParsePropertyValue, SafeParseResult } from './utils/parse';
 export { resolvePreferences } from './utils/resolvePreferences';
 export type { ResolvePreferencesResult } from './utils/resolvePreferences';
