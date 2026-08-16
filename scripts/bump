@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# version — bootstrap for the Nimbox versioning tool.
+# bump — bootstrap for the Nimbox ship command.
 #
-# Fetches the canonical version.sh from the repo/ref pinned in version.json's
+# Fetches the canonical bump.sh from the repo/ref pinned in version.json's
 # `tool` block and runs it against THIS repo's VERSION + version.json. The repo
 # carries only VERSION, version.json, and this launcher; the logic lives
 # centrally in nimbox/build-tools.
@@ -23,10 +23,10 @@ cd "$ROOT"
 [ -f version.json ] || { echo "error: no version.json at repo root ($ROOT)" >&2; exit 1; }
 
 repo="$(jq -r '.tool.repo // "nimbox/build-tools"' version.json)"
-path="$(jq -r '.tool.path // "scripts/version.sh"' version.json)"
+path="$(jq -r '.tool.path // "scripts/bump.sh"' version.json)"
 ref="$(jq -r '.tool.ref // "main"' version.json)"
 
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nimbox-version"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nimbox-bump"
 mkdir -p "$cache_dir"
 cached="$cache_dir/$(printf '%s/%s/%s' "$repo" "$ref" "$path" | tr '/' '_')"
 

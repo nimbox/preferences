@@ -6,14 +6,7 @@ on:
       - 'v*.*.*'
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify version consistency
-        run: ./scripts/version verify "${GITHUB_REF_NAME}"
   release:
-    needs: verify
     uses: nimbox/build-tools/.github/workflows/node-release.yaml@main
     with:
       workingDirectory: typescript

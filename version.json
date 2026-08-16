@@ -1,15 +1,13 @@
 {
-  "manifest": "1",
   "tagPrefix": "v",
+  "branch": "main",
   "tool": {
     "repo": "nimbox/build-tools",
-    "path": "scripts/version.sh",
+    "path": "scripts/bump.sh",
     "ref": "main"
   },
   "targets": [
-    { "file": "typescript/package.json", "type": "json", "path": ".version" },
-    { "file": "typescript/packages/preferences/package.json", "type": "json", "path": ".version" },
-    { "file": "typescript/packages/preferences-react/package.json", "type": "json", "path": ".version" },
-    { "file": "typescript/packages/preferences-react/package.json", "type": "json", "path": ".dependencies[\"@nimbox/preferences\"]" }
+    { "type": "npm", "directory": "typescript", "workspaces": true },
+    { "type": "json", "file": "typescript/packages/preferences-react/package.json", "path": ".dependencies[\"@nimbox/preferences\"]" }
   ]
 }
